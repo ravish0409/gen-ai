@@ -52,7 +52,52 @@ if role == "Candidate":
         st.button("Start Interview", on_click=next_page)
 
     elif st.session_state.page == 3:
-        st.header("page 3")
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
 
+        if "question_index" not in st.session_state:
+            st.session_state.question_index = 0  # To keep track of the current question
+
+        # List of questions to be asked
+        question_list = [ 
+            "What is your expected salary range?",
+            "Can you share your date of birth?",
+            "Do you have experience in [skill from job posting]?",
+            "What are your preferred work hours?",
+            "Can you tell us about a challenging project you've worked on?",
+            'Rate this project on a scale of 1-5.', 
+        ]
+
+        # Function to display chat history
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        # If there are still questions left to ask
+        if st.session_state.question_index < len(question_list)-1:
+            current_question = question_list[st.session_state.question_index]
+            
+            # Show the current question in the chat
+            with st.chat_message("system"):
+                st.markdown(current_question)
+
+            # Get user's response
+            if prompt := st.chat_input("Enter your answer"):
+                with st.chat_message("user"):
+                    st.markdown(prompt)
+                
+                # Add both question and user response to chat history
+                st.session_state.messages.append({"role": "system", "content": current_question})
+                st.session_state.messages.append({"role": "user", "content": prompt})
+                
+                # Move to the next question
+                st.session_state.question_index += 1
+                with st.chat_message("system"):
+                    st.markdown(question_list[st.session_state.question_index])
+        else:
+            # st.session_state.messages.append({"role": "system", "content": question_list[st.session_state.question_index]})
+            # st.session_state.messages.append({"role": "user", "content": prompt})
+            st.write("You have answered all the questions. Thank you!")
 elif role == "Admin":
     st.title("Admin Portal")
+    st.write(st.session_state.messages)
