@@ -1,11 +1,56 @@
 import streamlit as st
 import time
-
+import sqlite3
+from PIL import Image
+import os
+from db_operations import fetch_data, update_score, create_database, add_data 
 # Function to handle page navigation
+
+create_database()
+def get_file_type(file_path):
+    _, extension = os.path.splitext(file_path)
+    return extension.lower()
+
+def display_user_info(user, user_index):
+    with st.expander(f"User: {user['name']}", expanded=True):
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            if user['picture'] and user['picture'] != 'None':
+                st.image(user['picture'], width=150)
+            else:
+                st.image("https://via.placeholder.com/150", width=150, caption="No image available")
+        
+        with col2:
+            st.markdown(f"**Email:** {user['email']}")
+            st.markdown(f"**Phone:** {user['phone_number']}")
+            st.markdown(f"**Score:** {user['score']}")
+        
+        st.markdown("### Conversation")
+        st.text_area("", value=user['conversation'], height=100, disabled=True, key=f"conversation_{user_index}")
+        
+        st.markdown("### Resume")
+        if user['resume_path']:
+            file_type = get_file_type(user['resume_path'])
+            if file_type in ['.pdf', '.doc', '.docx']:
+                st.download_button(
+                    label=f"Download Resume ({file_type[1:].upper()})",
+                    data=user['resume_path'],
+                    file_name=f"{user['name']}_resume{file_type}",
+                    mime="application/octet-stream",
+                    key=f"download_{user_index}"
+                )
+            else:
+                st.warning(f"Unsupported resume file type: {file_type}")
+        else:
+            st.warning("No resume available")
 def next_page():
     if st.session_state.page==1:
         if job_posting and resume:
             st.session_state.page = 2
+
+            st.session_state.resume=f'uploads/{resume.name}'
+ 
         else:
             st.error("Please upload both documents before proceeding.")
     elif st.session_state.page==2:
@@ -13,8 +58,12 @@ def next_page():
                 st.session_state.name = name
                 st.session_state.email = email
                 st.session_state.phone = phone
-                st.session_state.picture = picture.read()
+                image = Image.open(picture)
+                image_path = os.path.join('images', f'{name}-{phone[:4]}.png')
+                image.save(image_path)
+                st.session_state.picture = image_path
                 st.session_state.page = 3
+
             else:
                 st.error("Please fill in all fields and upload a picture.")
 
@@ -54,20 +103,31 @@ if role == "Candidate":
     elif st.session_state.page == 3:
         if "messages" not in st.session_state:
             st.session_state.messages = []
-
-        if "question_index" not in st.session_state:
-            st.session_state.question_index = 0  # To keep track of the current question
-
-        # List of questions to be asked
-        question_list = [ 
+            st.session_state.stm=''
+        print(st.session_state)
+        print(st.session_state.qestions)
+        if 'qestions' not in st.session_state:
+            print("one time")
+            st.session_state.questions = [ 
             "What is your expected salary range?",
             "Can you share your date of birth?",
             "Do you have experience in [skill from job posting]?",
             "What are your preferred work hours?",
             "Can you tell us about a challenging project you've worked on?",
-            'Rate this project on a scale of 1-5.', 
+            'do you like to share something', 
         ]
 
+        if "question_index" not in st.session_state:
+            st.session_state.question_index = 0  # To keep track of the current question
+
+        # List of questions to be asked
+        question_list = st.session_state.questions
+
+
+        def get_q(index):
+            for i in question_list[index].split():
+                yield i+' '
+                time.sleep(0.05)
         # Function to display chat history
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
@@ -80,24 +140,56 @@ if role == "Candidate":
             # Show the current question in the chat
             with st.chat_message("system"):
                 st.markdown(current_question)
+                
 
             # Get user's response
             if prompt := st.chat_input("Enter your answer"):
                 with st.chat_message("user"):
                     st.markdown(prompt)
+                    
                 
                 # Add both question and user response to chat history
                 st.session_state.messages.append({"role": "system", "content": current_question})
+                st.session_state.stm+=current_question+"\n"
                 st.session_state.messages.append({"role": "user", "content": prompt})
+                st.session_state.stm+=prompt+'\n'
                 
                 # Move to the next question
                 st.session_state.question_index += 1
+                time.sleep(0.4)
                 with st.chat_message("system"):
-                    st.markdown(question_list[st.session_state.question_index])
+                    st.write(get_q(st.session_state.question_index))
         else:
-            # st.session_state.messages.append({"role": "system", "content": question_list[st.session_state.question_index]})
-            # st.session_state.messages.append({"role": "user", "content": prompt})
             st.write("You have answered all the questions. Thank you!")
+            if 'saved' not in st.session_state:
+                column=['name', 'email', 'phone_number', 'picture','conversation','resume_path', 'score']
+                values=(st.session_state.name,st.session_state.email,st.session_state.phone,st.session_state.picture,st.session_state.stm,st.session_state.resume, 0)
+                add_data(column,values)
+                st.session_state.saved=1
+
 elif role == "Admin":
     st.title("Admin Portal")
-    st.write(st.session_state.messages)
+    st.markdown("---")
+
+    data = fetch_data()
+    
+    col1, col2 = st.columns([1, 3])
+    
+    with col1:
+        st.subheader("User Selection")
+        names = ['All'] + data['name'].tolist()
+        selected_name = st.selectbox("Select a user:", names)
+        
+        st.markdown("### Quick Stats")
+        st.metric("Total Users", len(data))
+        st.metric("Avg Score", round(data['score'].mean(), 2))
+    
+    with col2:
+        st.subheader("User Information and Scoring")
+        if selected_name == 'All':
+            st.info("Displaying information for all users")
+            for index, user in data.iterrows():
+                display_user_info(user, index)
+        else:
+            selected_user = data[data['name'] == selected_name].iloc[0]
+            display_user_info(selected_user, 0)
