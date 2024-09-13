@@ -2,5 +2,4 @@ __pycache__
 /.venv
 /.env
 test.py
-database_test.py
-interview.db
+test2.py

@@ -7,9 +7,7 @@ from db_operations import fetch_data, update_score, create_database, add_data
 # Function to handle page navigation
 
 create_database()
-def get_file_type(file_path):
-    _, extension = os.path.splitext(file_path)
-    return extension.lower()
+
 
 def display_user_info(user, user_index):
     with st.expander(f"User: {user['name']}", expanded=True):
@@ -17,7 +15,10 @@ def display_user_info(user, user_index):
         
         with col1:
             if user['picture'] and user['picture'] != 'None':
-                st.image(user['picture'], width=150)
+                try:
+                    st.image(user['picture'], width=150)
+                except:
+                    st.image("https://via.placeholder.com/150", width=150, caption="No image available")
             else:
                 st.image("https://via.placeholder.com/150", width=150, caption="No image available")
         
@@ -27,29 +28,38 @@ def display_user_info(user, user_index):
             st.markdown(f"**Score:** {user['score']}")
         
         st.markdown("### Conversation")
-        st.text_area("", value=user['conversation'], height=100, disabled=True, key=f"conversation_{user_index}")
+        st.text_area(
+            label="User Conversation",
+            value=user['conversation'],
+            height=100,
+            disabled=True,
+            key=f"conversation_{user_index}",
+            label_visibility="collapsed"
+        )
         
         st.markdown("### Resume")
         if user['resume_path']:
-            file_type = get_file_type(user['resume_path'])
-            if file_type in ['.pdf', '.doc', '.docx']:
+            filepath=user['resume_path']
+            folder,filename=filepath.split('/')
+            try: 
+                with open(filepath, 'rb') as f:
+                    file_data = f.read()
                 st.download_button(
-                    label=f"Download Resume ({file_type[1:].upper()})",
-                    data=user['resume_path'],
-                    file_name=f"{user['name']}_resume{file_type}",
-                    mime="application/octet-stream",
-                    key=f"download_{user_index}"
+                    label=f"Download {filename}",
+                    data=file_data,
+                    file_name=filename,
+                    mime='application/octet-stream'
                 )
-            else:
-                st.warning(f"Unsupported resume file type: {file_type}")
+            except:
+                st.write("No resume available")
+
         else:
             st.warning("No resume available")
 def next_page():
     if st.session_state.page==1:
         if job_posting and resume:
-            st.session_state.page = 2
-
             st.session_state.resume=f'uploads/{resume.name}'
+            st.session_state.page = 2
  
         else:
             st.error("Please upload both documents before proceeding.")
@@ -68,7 +78,6 @@ def next_page():
                 st.error("Please fill in all fields and upload a picture.")
 
 def save_uploaded_file(uploaded_file):
-    
     with open(f"./uploads/{uploaded_file.name}", "wb") as f:
         f.write(uploaded_file.getbuffer())
     st.success(f"File {uploaded_file.name} saved successfully!")
@@ -104,9 +113,8 @@ if role == "Candidate":
         if "messages" not in st.session_state:
             st.session_state.messages = []
             st.session_state.stm=''
-        print(st.session_state)
-        print(st.session_state.qestions)
-        if 'qestions' not in st.session_state:
+
+        if 'questions' not in st.session_state:
             print("one time")
             st.session_state.questions = [ 
             "What is your expected salary range?",

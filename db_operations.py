@@ -38,10 +38,9 @@ def fetch_data():
     return df
 def add_data( columns, values):
     """
-    Insert data into specified columns of a table.
+    Insert data into table.
     
     Parameters:
-    - table (str): The name of the table to insert data into.
     - columns (list): A list of column names where data will be inserted.
     - values (tuple): A tuple of values corresponding to the columns.
     """
