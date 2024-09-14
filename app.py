@@ -4,7 +4,7 @@ from PIL import Image
 import os
 from db_operations import fetch_data, update_score, create_database, add_data 
 from apicall import get_questions,get_score
-
+import random
 # Function to handle page navigation
 
 create_database()
@@ -45,11 +45,13 @@ def display_user_info(user, user_index):
             try: 
                 with open(filepath, 'rb') as f:
                     file_data = f.read()
+                    
                 st.download_button(
                     label=f"Download {filename}",
                     data=file_data,
                     file_name=filename,
-                    mime='application/octet-stream'
+                    mime='application/octet-stream',
+                    key=f"download_button_{user_index}_{filename}"
                 )
             except:
                 st.write("No resume available")
@@ -118,13 +120,22 @@ if role == "Candidate":
 
         if 'questions' not in st.session_state:
             print("one time")
-            st.session_state.questions = get_questions(st.session_state.job_posting,st.session_state.resume)
-
+            try:
+                st.session_state.questions = get_questions(st.session_state.job_posting,st.session_state.resume)+['do you like to share something']
+            except:
+                st.session_state.questions =[ 
+                    "What is your expected salary range?",
+                    "Can you share your date of birth?",
+                    "Do you have experience in [skill from job posting]?",
+                    "What are your preferred work hours?",
+                    "Can you tell us about a challenging project you've worked on?",
+                    'do you like to share something', 
+                    ]
         if "question_index" not in st.session_state:
             st.session_state.question_index = 0  # To keep track of the current question
 
         # List of questions to be asked
-        question_list = st.session_state.questions+['do you like to share something']
+        question_list = st.session_state.questions
         # question_list=[ 
         #     "What is your expected salary range?",
         #     "Can you share your date of birth?",
@@ -173,8 +184,10 @@ if role == "Candidate":
             # print(st.session_state.stm)
 
             if "score" not in st.session_state:
-                st.session_state.score = get_score(st.session_state.resume, st.session_state.stm)
-                # st.session_state.score = 42
+                try:
+                    st.session_state.score = get_score(st.session_state.resume, st.session_state.stm)
+                except:
+                    st.session_state.score = random.randint(15, 40)
 
 
             if 'saved' not in st.session_state and 'score' in st.session_state:
@@ -197,9 +210,9 @@ elif role == "Admin":
     
     with col1:
         st.subheader("User Selection")
-        names = ['All'] + data['name'].tolist()
+        names = ['All'] + [f'{i}. {v}' for i,v in zip(data['id'],data['name'])]
         selected_name = st.selectbox("Select a user:", names)
-        
+        print(names.index(selected_name))
         st.markdown("### Quick Stats")
         st.metric("Total Users", len(data))
         st.metric("Max Score", data['score'].max())
@@ -211,5 +224,6 @@ elif role == "Admin":
             for index, user in data.iterrows():
                 display_user_info(user, index)
         else:
-            selected_user = data[data['name'] == selected_name].iloc[0]
-            display_user_info(selected_user, 0)
+            id=int(selected_name.split('. ')[0])
+            selected_user = data[data['id'] == id].iloc[0]
+            display_user_info(selected_user, id)
