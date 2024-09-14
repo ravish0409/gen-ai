@@ -1,9 +1,10 @@
 import streamlit as st
 import time
-import sqlite3
 from PIL import Image
 import os
 from db_operations import fetch_data, update_score, create_database, add_data 
+from apicall import get_questions,get_score
+
 # Function to handle page navigation
 
 create_database()
@@ -31,7 +32,7 @@ def display_user_info(user, user_index):
         st.text_area(
             label="User Conversation",
             value=user['conversation'],
-            height=100,
+            height=150,
             disabled=True,
             key=f"conversation_{user_index}",
             label_visibility="collapsed"
@@ -58,11 +59,12 @@ def display_user_info(user, user_index):
 def next_page():
     if st.session_state.page==1:
         if job_posting and resume:
+            st.session_state.job_posting=f'uploads/{job_posting.name}'
             st.session_state.resume=f'uploads/{resume.name}'
             st.session_state.page = 2
- 
         else:
             st.error("Please upload both documents before proceeding.")
+            
     elif st.session_state.page==2:
             if name and email and phone and picture:
                 st.session_state.name = name
@@ -116,21 +118,21 @@ if role == "Candidate":
 
         if 'questions' not in st.session_state:
             print("one time")
-            st.session_state.questions = [ 
-            "What is your expected salary range?",
-            "Can you share your date of birth?",
-            "Do you have experience in [skill from job posting]?",
-            "What are your preferred work hours?",
-            "Can you tell us about a challenging project you've worked on?",
-            'do you like to share something', 
-        ]
+            st.session_state.questions = get_questions(st.session_state.job_posting,st.session_state.resume)
 
         if "question_index" not in st.session_state:
             st.session_state.question_index = 0  # To keep track of the current question
 
         # List of questions to be asked
-        question_list = st.session_state.questions
-
+        question_list = st.session_state.questions+['do you like to share something']
+        # question_list=[ 
+        #     "What is your expected salary range?",
+        #     "Can you share your date of birth?",
+        #     "Do you have experience in [skill from job posting]?",
+        #     "What are your preferred work hours?",
+        #     "Can you tell us about a challenging project you've worked on?",
+        #     'do you like to share something', 
+        # ]
 
         def get_q(index):
             for i in question_list[index].split():
@@ -158,9 +160,9 @@ if role == "Candidate":
                 
                 # Add both question and user response to chat history
                 st.session_state.messages.append({"role": "system", "content": current_question})
-                st.session_state.stm+=current_question+"\n"
+                st.session_state.stm+='Q'+current_question+"\n"
                 st.session_state.messages.append({"role": "user", "content": prompt})
-                st.session_state.stm+=prompt+'\n'
+                st.session_state.stm+='Answer: '+prompt+'\n'
                 
                 # Move to the next question
                 st.session_state.question_index += 1
@@ -168,12 +170,22 @@ if role == "Candidate":
                 with st.chat_message("system"):
                     st.write(get_q(st.session_state.question_index))
         else:
-            st.write("You have answered all the questions. Thank you!")
-            if 'saved' not in st.session_state:
-                column=['name', 'email', 'phone_number', 'picture','conversation','resume_path', 'score']
-                values=(st.session_state.name,st.session_state.email,st.session_state.phone,st.session_state.picture,st.session_state.stm,st.session_state.resume, 0)
-                add_data(column,values)
-                st.session_state.saved=1
+            # print(st.session_state.stm)
+
+            if "score" not in st.session_state:
+                st.session_state.score = get_score(st.session_state.resume, st.session_state.stm)
+                # st.session_state.score = 42
+
+
+            if 'saved' not in st.session_state and 'score' in st.session_state:
+                column = ['name', 'email', 'phone_number', 'picture', 'conversation', 'resume_path', 'score']
+                values = (st.session_state.name, st.session_state.email, st.session_state.phone, 
+                        st.session_state.picture, st.session_state.stm, st.session_state.resume, 
+                        st.session_state.score)
+                add_data(column, values)
+                st.session_state.saved = 1
+                st.success("thank you for participating!")
+
 
 elif role == "Admin":
     st.title("Admin Portal")
@@ -190,7 +202,7 @@ elif role == "Admin":
         
         st.markdown("### Quick Stats")
         st.metric("Total Users", len(data))
-        st.metric("Avg Score", round(data['score'].mean(), 2))
+        st.metric("Max Score", data['score'].max())
     
     with col2:
         st.subheader("User Information and Scoring")
