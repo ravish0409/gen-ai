@@ -6,6 +6,8 @@ from db_operations import fetch_data, update_score, create_database, add_data
 from apicall import get_questions,get_score
 import random
 from dotenv import load_dotenv
+import pyperclip
+
 
 load_dotenv()
 user=os.getenv("user")
@@ -66,11 +68,15 @@ def display_user_info(user, user_index):
             st.warning("No resume available")
 def next_page():
     if st.session_state.page==1:
-        if resume:
-            st.session_state.resume=f'uploads/{resume.name}'
-            st.session_state.page = 2
+        if resume and text:
+            if text==st.session_state.token:
+                st.session_state.job_posting=st.session_state.token.split('-')[-1]
+                st.session_state.resume=f'uploads/{resume.name}'
+                st.session_state.page = 2
+            else:
+                st.error("Invalid token")
         else:
-            st.error("Please upload resume before proceeding.")
+            st.error("provide all info before proceeding.")
             
     elif st.session_state.page==2:
             if name and email and phone and picture:
@@ -90,13 +96,13 @@ def save_uploaded_file(uploaded_file):
     with open(f"./uploads/{uploaded_file.name}", "wb") as f:
         f.write(uploaded_file.getbuffer())
     st.success(f"File {uploaded_file.name} saved successfully!")
-
+if "show_token" not in st.session_state:
+    st.session_state.show_token = False
 def clicked():
     if job_posting: 
-        st.session_state.job_posting=f'uploads/{job_posting.name}'
-        
-        st.session_state.role_list=["Candidate","Recruiter"]
-        st.session_state.page=1
+        st.session_state.show_token=True
+        # st.session_state.role_list=["Candidate","Recruiter"]
+        # st.session_state.page=1
     else:
         st.error("Please upload a job posting before proceeding.")
 
@@ -106,7 +112,7 @@ role = st.sidebar.selectbox("Select Role:", st.session_state.role_list)
 
 
 if role == "Recruiter" :
-    st.session_state.role_list = ["Recruiter","Candidate"]
+    # st.session_state.role_list = ["Recruiter","Candidate"]
 
     
     if 'login' not in  st.session_state:
@@ -120,10 +126,29 @@ if role == "Recruiter" :
         with col2:
             if st.button("Logout"):
                 st.session_state.login = False
-        job_posting = st.file_uploader("Upload Job Posting", type=['pdf', 'docx'])
-        if job_posting: save_uploaded_file(job_posting)
-        st.button('start interview',on_click=clicked)
+                
+        col1,col2=st.columns([3,2])
+        with col1:
+            job_posting = st.file_uploader("Upload Job Posting", type=['pdf', 'docx'])
+            if job_posting: save_uploaded_file(job_posting)
 
+
+            st.button('generate token 🎫',on_click=clicked)
+
+
+        if  job_posting and st.session_state.show_token:
+            with  col2:
+                job_posting_path=f'uploads/{job_posting.name}'
+                st.session_state.token=f'%token%-{job_posting_path}'
+                with st.chat_message("🎫"):
+                    st.markdown(st.session_state.token)
+                if st.button('Copy to Clipboard'):
+                    pyperclip.copy(st.session_state.token)
+                    st.success("Text copied to clipboard!")
+
+
+
+        
         st.markdown("---")
         data = fetch_data()
         
@@ -165,17 +190,21 @@ if role == "Recruiter" :
 
 
 
-elif role == "Candidate" and ('job_posting' in st.session_state):
+elif role == "Candidate" :
     
+    st.title('Candidate Portal')
+    st.markdown('---')
+
     
     if 'page' not in st.session_state:
         st.session_state.page = 1
     
     if st.session_state.page == 1:
         
+        with st.chat_message("🎫"):
+            text=st.text_input("Enter Token")
         
-
-        resume = st.file_uploader("### upload", type=['pdf', 'docx'])
+        resume = st.file_uploader("Upload your Resume", type=['pdf', 'docx'])
         if resume: save_uploaded_file(resume)
         st.button("Next", on_click=next_page)
         
