@@ -5,10 +5,16 @@ import os
 from db_operations import fetch_data, update_score, create_database, add_data 
 from apicall import get_questions,get_score
 import random
-# Function to handle page navigation
+from dotenv import load_dotenv
+
+load_dotenv()
+user=os.getenv("user")
+password=os.getenv("password")
 
 create_database()
+if "role_list" not in  st.session_state:
 
+    st.session_state.role_list = ["Recruiter","Candidate"]
 
 def display_user_info(user, user_index):
     with st.expander(f"User: {user['name']}", expanded=True):
@@ -60,12 +66,11 @@ def display_user_info(user, user_index):
             st.warning("No resume available")
 def next_page():
     if st.session_state.page==1:
-        if job_posting and resume:
-            st.session_state.job_posting=f'uploads/{job_posting.name}'
+        if resume:
             st.session_state.resume=f'uploads/{resume.name}'
             st.session_state.page = 2
         else:
-            st.error("Please upload both documents before proceeding.")
+            st.error("Please upload resume before proceeding.")
             
     elif st.session_state.page==2:
             if name and email and phone and picture:
@@ -86,19 +91,91 @@ def save_uploaded_file(uploaded_file):
         f.write(uploaded_file.getbuffer())
     st.success(f"File {uploaded_file.name} saved successfully!")
 
-role = st.sidebar.selectbox("Select Role:", ["Candidate", "Admin"])
+def clicked():
+    if job_posting: 
+        st.session_state.job_posting=f'uploads/{job_posting.name}'
+        
+        st.session_state.role_list=["Candidate","Recruiter"]
+        st.session_state.page=1
+    else:
+        st.error("Please upload a job posting before proceeding.")
 
-if role == "Candidate":
+
+role = st.sidebar.selectbox("Select Role:", st.session_state.role_list)
+
+
+
+if role == "Recruiter" :
+    st.session_state.role_list = ["Recruiter","Candidate"]
+
+    
+    if 'login' not in  st.session_state:
+        st.session_state.login = False
+    
+    if st.session_state.login:
+        col1,col2=st.columns([5,1])
+        with col1:
+            st.title("Recruiter Portal")
+            st.markdown("---")
+        with col2:
+            if st.button("Logout"):
+                st.session_state.login = False
+        job_posting = st.file_uploader("Upload Job Posting", type=['pdf', 'docx'])
+        if job_posting: save_uploaded_file(job_posting)
+        st.button('start interview',on_click=clicked)
+
+        st.markdown("---")
+        data = fetch_data()
+        
+        col1, col2 = st.columns([1, 3])
+        
+        with col1:
+            st.subheader("User Selection")
+            names = ['All'] + [f'{i}. {v}' for i,v in zip(data['id'],data['name'])]
+            selected_name = st.selectbox("Select a user:", names)
+            st.markdown("### Quick Stats")
+            st.metric("Total Users", len(data))
+            st.metric("Max Score", data['score'].max())
+        
+        with col2:
+            st.subheader("User Information and Scoring")
+            if selected_name == 'All':
+                st.info("Displaying information for all users")
+                for index, user in data.iterrows():
+                    display_user_info(user, index)
+            else:
+                id=int(selected_name.split('. ')[0])
+                selected_user = data[data['id'] == id].iloc[0]
+                display_user_info(selected_user, id)
+
+    else:
+        st.title("Recruiter Portal")
+        st.markdown("---")
+        st.title('Login')
+        with st.form('login form'):
+            input_user=st.text_input('Enter username')
+            input_password=st.text_input('Password', type='password')
+            submit_button=st.form_submit_button('Login')
+
+        if submit_button:
+            if input_user == user and input_password == password:
+                st.session_state.login = True
+            else:
+                st.error('Invalid username or password')
+
+
+
+elif role == "Candidate" and ('job_posting' in st.session_state):
     
     
     if 'page' not in st.session_state:
         st.session_state.page = 1
     
     if st.session_state.page == 1:
-        st.header("Upload Documents")
-        job_posting = st.file_uploader("Upload Job Posting", type=['pdf', 'docx'])
-        if job_posting: save_uploaded_file(job_posting) 
-        resume = st.file_uploader("Upload Resume", type=['pdf', 'docx'])
+        
+        
+
+        resume = st.file_uploader("### upload", type=['pdf', 'docx'])
         if resume: save_uploaded_file(resume)
         st.button("Next", on_click=next_page)
         
@@ -109,7 +186,7 @@ if role == "Candidate":
         phone = st.text_input("Phone")
         col1,col2=st.columns([1,1])
         # picture_upload = col1.file_uploader("Upload your picture", type=['jpg', 'png'])
-        picture = col2.camera_input("Upload your picture")
+        picture = col2.camera_input("your picture")
 
         st.button("Start Interview", on_click=next_page)
 
@@ -198,32 +275,5 @@ if role == "Candidate":
                 add_data(column, values)
                 st.session_state.saved = 1
                 st.success("thank you for participating!")
-
-
-elif role == "Admin":
-    st.title("Admin Portal")
-    st.markdown("---")
-
-    data = fetch_data()
-    
-    col1, col2 = st.columns([1, 3])
-    
-    with col1:
-        st.subheader("User Selection")
-        names = ['All'] + [f'{i}. {v}' for i,v in zip(data['id'],data['name'])]
-        selected_name = st.selectbox("Select a user:", names)
-        print(names.index(selected_name))
-        st.markdown("### Quick Stats")
-        st.metric("Total Users", len(data))
-        st.metric("Max Score", data['score'].max())
-    
-    with col2:
-        st.subheader("User Information and Scoring")
-        if selected_name == 'All':
-            st.info("Displaying information for all users")
-            for index, user in data.iterrows():
-                display_user_info(user, index)
-        else:
-            id=int(selected_name.split('. ')[0])
-            selected_user = data[data['id'] == id].iloc[0]
-            display_user_info(selected_user, id)
+else:
+    st.warning("Please login first")

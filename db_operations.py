@@ -6,7 +6,7 @@ import pandas as pd
 
 
 def get_db_connection():
-    conn = sqlite3.connect('my_database.db')
+    conn = sqlite3.connect('database.db')
     return conn
 def create_database():
     conn = get_db_connection()  # This creates the database file
