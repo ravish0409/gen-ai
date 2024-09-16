@@ -73,6 +73,7 @@ def next_page():
                 st.session_state.job_posting=st.session_state.token.split('-')[-1]
                 st.session_state.resume=f'uploads/{resume.name}'
                 st.session_state.page = 2
+                st.session_state.role_list = ["Candidate"]
             else:
                 st.error("Invalid token")
         else:
@@ -118,6 +119,8 @@ if role == "Recruiter" :
     if 'login' not in  st.session_state:
         st.session_state.login = False
     
+
+
     if st.session_state.login:
         col1,col2=st.columns([5,1])
         with col1:
@@ -126,75 +129,79 @@ if role == "Recruiter" :
         with col2:
             if st.button("Logout"):
                 st.session_state.login = False
-
                 st.session_state.show_token=False
-                
-        col1,col2=st.columns([3,2])
-        with col1:
-            job_posting = st.file_uploader("Upload Job Posting", type=['pdf', 'docx'])
-            if job_posting: save_uploaded_file(job_posting)
+                st.session_state.role_list = ["Recruiter","Candidate"]
 
 
-            st.button('Generate Token 🎫',on_click=clicked)
-        #progress bar
-      
+        tab1,tab2=st.tabs(['Post a Job', 'Candidate Profiles'])
+
+        with tab1:     
+            col1,col2=st.columns([3,2])
+            with col1:
+                job_posting = st.file_uploader("Upload Job Posting", type=['pdf', 'docx'])
+                if job_posting: save_uploaded_file(job_posting)
 
 
-        if  job_posting and st.session_state.show_token:
-            with  col2:
-                job_posting_path=f'uploads/{job_posting.name}'
-                st.session_state.token=f'%token%-{job_posting_path}'
-                progress_bar = col2.progress(0)
-                for percent_complete in range(100):
-                    time.sleep(0.01)  # Simulate some delay during token generation
-                    progress_bar.progress(percent_complete + 1)
-                with st.container(border=True):
-                    with st.chat_message("🎫"):
-                        st.markdown(st.session_state.token)
-                _,colt=st.columns([1,2])
-                with  colt:
-
-                    if st.button('Copy to Clipboard'):
-                        pyperclip.copy(st.session_state.token)
-                        st.success("Text copied to clipboard!")
-
-
-        st.markdown("---")
-        data = fetch_data()
+                st.button('Generate Token 🎫',on_click=clicked)
         
-        col1, col2 = st.columns([1, 3])
-        
-        with col1:
-            st.subheader("User Selection")
-            names = ['All'] + [f'{i}. {v}' for i,v in zip(data['id'],data['name'])]
-            selected_name = st.selectbox("Select a user:", names)
-            st.markdown("### Quick Stats")
-            st.metric("Total Users", len(data))
-            st.metric("Max Score", data['score'].max())
-        
-        with col2:
-            st.subheader("User Information and Scoring")
-            if selected_name == 'All':
-                st.info("Displaying information for all users")
-                for index, user in data.iterrows():
-                    display_user_info(user, index)
-            else:
-                id=int(selected_name.split('. ')[0])
-                selected_user = data[data['id'] == id].iloc[0]
-                display_user_info(selected_user, id)
+            if  job_posting and st.session_state.show_token:
+                with  col2:
+                    job_posting_path=f'uploads/{job_posting.name}'
+                    st.session_state.token=f'%token%-{job_posting_path}'
+                    progress_bar = col2.progress(0)
+                    for percent_complete in range(100):
+                        time.sleep(0.01)  # Simulate some delay during token generation
+                        progress_bar.progress(percent_complete + 1)
+                    with st.container(border=True):
+                        with st.chat_message("🎫"):
+                            st.markdown(st.session_state.token)
+                    _,colt=st.columns([1,2])
+                    with  colt:
+
+                        if st.button('Copy to Clipboard'):
+                            pyperclip.copy(st.session_state.token)
+                            st.success("Text copied to clipboard!")
+        with tab2:
+
+            data = fetch_data()
+            
+            col1, col2 = st.columns([1, 3])
+            
+            with col1:
+                st.subheader("User Selection")
+                names = ['All'] + [f'{i}. {v}' for i,v in zip(data['id'],data['name'])]
+                selected_name = st.selectbox("Select a user:", names)
+                st.markdown("### Quick Stats")
+                st.metric("Total Users", len(data))
+                st.metric("Max Score", data['score'].max())
+            
+            with col2:
+                st.subheader("User Information and Scoring")
+                if selected_name == 'All':
+                    st.info("Displaying information for all users")
+                    for index, user in data.iterrows():
+                        display_user_info(user, index)
+                else:
+                    id=int(selected_name.split('. ')[0])
+                    selected_user = data[data['id'] == id].iloc[0]
+                    display_user_info(selected_user, id)
 
     else:
         st.title("Recruiter Portal")
         st.markdown("---")
         st.title('Login')
         with st.form('login form'):
-            input_user=st.text_input('Enter username :',placeholder='Username')
-            input_password=st.text_input('Password :', type='password',placeholder='Password')
+            
+ 
+            input_user=st.text_input('👤 Enter username :',placeholder='Username')
+            input_password=st.text_input('🔒 Password :', type='password',placeholder='Password')       
+
             submit_button=st.form_submit_button('Login')
 
         if submit_button:
             if input_user == user and input_password == password:
                 st.session_state.login = True
+                st.session_state.role_list = ["Recruiter"]
             else:
                 st.error('Invalid username or password')
 
