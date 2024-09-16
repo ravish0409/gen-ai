@@ -126,6 +126,8 @@ if role == "Recruiter" :
         with col2:
             if st.button("Logout"):
                 st.session_state.login = False
+
+                st.session_state.show_token=False
                 
         col1,col2=st.columns([3,2])
         with col1:
@@ -133,22 +135,30 @@ if role == "Recruiter" :
             if job_posting: save_uploaded_file(job_posting)
 
 
-            st.button('generate token 🎫',on_click=clicked)
+            st.button('Generate Token 🎫',on_click=clicked)
+        #progress bar
+      
 
 
         if  job_posting and st.session_state.show_token:
             with  col2:
                 job_posting_path=f'uploads/{job_posting.name}'
                 st.session_state.token=f'%token%-{job_posting_path}'
-                with st.chat_message("🎫"):
-                    st.markdown(st.session_state.token)
-                if st.button('Copy to Clipboard'):
-                    pyperclip.copy(st.session_state.token)
-                    st.success("Text copied to clipboard!")
+                progress_bar = col2.progress(0)
+                for percent_complete in range(100):
+                    time.sleep(0.01)  # Simulate some delay during token generation
+                    progress_bar.progress(percent_complete + 1)
+                with st.container(border=True):
+                    with st.chat_message("🎫"):
+                        st.markdown(st.session_state.token)
+                _,colt=st.columns([1,2])
+                with  colt:
+
+                    if st.button('Copy to Clipboard'):
+                        pyperclip.copy(st.session_state.token)
+                        st.success("Text copied to clipboard!")
 
 
-
-        
         st.markdown("---")
         data = fetch_data()
         
@@ -178,8 +188,8 @@ if role == "Recruiter" :
         st.markdown("---")
         st.title('Login')
         with st.form('login form'):
-            input_user=st.text_input('Enter username')
-            input_password=st.text_input('Password', type='password')
+            input_user=st.text_input('Enter username :',placeholder='Username')
+            input_password=st.text_input('Password :', type='password',placeholder='Password')
             submit_button=st.form_submit_button('Login')
 
         if submit_button:
@@ -194,16 +204,18 @@ elif role == "Candidate" :
     
     st.title('Candidate Portal')
     st.markdown('---')
-
-    
+    if 'token' not in st.session_state:
+        st.session_state.token=os.getenv('token')    
     if 'page' not in st.session_state:
         st.session_state.page = 1
     
     if st.session_state.page == 1:
-        
-        with st.chat_message("🎫"):
-            text=st.text_input("Enter Token")
-        
+        col1,col2=st.columns([1,12])
+        with col1:
+            st.markdown("# 🎫")
+        with col2:
+            text=st.text_input('Enter:',placeholder="Enter Token")
+
         resume = st.file_uploader("Upload your Resume", type=['pdf', 'docx'])
         if resume: save_uploaded_file(resume)
         st.button("Next", on_click=next_page)

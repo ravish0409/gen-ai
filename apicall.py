@@ -109,7 +109,7 @@ def  get_score(job_file,convo):
         {"role": "user", "content": prompt}
     ],
     temperature=0.3,  # Lower temperature for more accurate and consistent scoring
-    top_p=1,          # Use all possible outputs
+    top_p=0.7,          # Use 70% of possible outputs
     )
     
     # Get the AI response and return it
