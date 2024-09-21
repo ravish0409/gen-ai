@@ -8,6 +8,114 @@ import pandas as pd
 def get_db_connection():
     conn = sqlite3.connect('database.db')
     return conn
+
+def create_recruiter_database():
+    conn = get_db_connection()  # This creates the database file
+    cursor = conn.cursor()
+
+    # Create a table called "recruiter"
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS recruiter (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT ,
+        password TEXT 
+    )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+def add_recruiter(values):
+    """
+    Insert data into table.
+    
+    Parameters:
+    - values (tuple): A tuple of values corresponding to the columns.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    placeholders = ', '.join(['?' for _ in values])  # e.g., "?, ?, ?"
+    
+    # SQL query for inserting data
+    query = f"INSERT INTO recruiter (username, password) VALUES ({placeholders})"
+    
+    try:
+        # Execute the query with the provided values
+        cursor.execute(query, values)
+        conn.commit()
+        print(f"Data inserted into recruiter successfully.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        conn.close()
+
+def fetch_recruiter_data():
+    conn = get_db_connection()
+    query = f"SELECT id, username, password FROM recruiter"
+
+    df = pd.read_sql(query, conn)
+    conn.close()
+    return df
+
+def create_job_database(recruiter):
+    conn = get_db_connection()  # This creates the database file
+    cursor = conn.cursor()
+
+    # Create a table called "{recruiter}"
+    cursor.execute(f'''
+    CREATE TABLE IF NOT EXISTS {recruiter} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        job TEXT ,
+        description TEXT ,
+        token TEXT 
+    )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+def add_job(recruiter,values):
+    """
+    Insert data into table.
+    
+    Parameters:
+    - values (tuple): A tuple of values corresponding to the columns.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    placeholders = ', '.join(['?' for _ in values])  # e.g., "?, ?, ?"
+    
+    # SQL query for inserting data
+    query = f"INSERT INTO {recruiter} (job, description, token) VALUES ({placeholders})"
+    
+    try:
+        # Execute the query with the provided values
+        cursor.execute(query, values)
+        conn.commit()
+        print(f"Data inserted into {recruiter} successfully.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        conn.close()
+
+def fetch_job_data(recruiter):
+    conn = get_db_connection()
+    query = f"SELECT id, job, description, token FROM {recruiter}"
+
+    df = pd.read_sql(query, conn)
+    conn.close()
+    return df
+
+def update_job_description(recruiter, job_id, new_description):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(f"UPDATE {recruiter} SET description = ? WHERE id = ?", (new_description, job_id))
+    conn.commit()
+    conn.close()
+
+
 def create_database():
     conn = get_db_connection()  # This creates the database file
     cursor = conn.cursor()

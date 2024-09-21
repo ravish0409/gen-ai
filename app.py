@@ -2,21 +2,70 @@ import streamlit as st
 import time
 from PIL import Image
 import os
-from db_operations import fetch_data, update_score, create_database, add_data 
+from db_operations import fetch_data, update_score, create_database, add_data,add_recruiter,create_recruiter_database,fetch_recruiter_data,create_job_database,add_job,fetch_job_data,update_job_description
 from apicall import get_questions,get_score
 import random
 from dotenv import load_dotenv
 import pyperclip
-
+from streamlit_option_menu import option_menu
+from streamlit_modal import Modal
 
 load_dotenv()
-user=os.getenv("user")
-password=os.getenv("password")
+
+
+create_recruiter_database()
 
 create_database()
 if "role_list" not in  st.session_state:
 
     st.session_state.role_list = ["Recruiter","Candidate"]
+
+
+def handle_login(input_user, input_password):
+    if input_user and input_password:
+        data=fetch_recruiter_data()
+        if data.loc[(data["username"]== input_user) & (data['password']==input_password)].size:
+            st.session_state['login'] = True
+            st.session_state['username'] = input_user
+            st.session_state.role_list=["Recruiter"]
+        else:
+            st.error('Invalid username or password')
+    else:
+        modal = Modal(key="field error", title="Error")
+        with modal.container():
+            st.error('Please fill in all fields')
+
+# Function to handle signup logic
+def handle_signup(new_user, new_password):
+    if  new_user and new_password:
+
+        data=fetch_recruiter_data()
+        if  data.loc[data['username']==new_user].size:
+            st.error('Username already exists. Please choose another.')
+        else:
+            values=(new_user, new_password)
+            add_recruiter(values)
+            st.session_state['login'] = True
+            st.session_state['username'] = new_user
+            st.session_state.role_list=["Recruiter"]
+    else:
+        st.error('Please fill in all fields')
+        
+
+# Login form
+def login_form():
+    st.title('Login')
+    input_user = st.text_input('👤 Enter username:', placeholder='Username', key='login_user')
+    input_password = st.text_input('🔒 Password:', type='password', placeholder='Password', key='login_password')
+    st.button('Login', on_click=handle_login, args=(input_user, input_password))
+
+# Signup form
+def signup_form():
+    st.title('Sign Up')
+    new_user = st.text_input('👤 Choose a username:', placeholder='Username', key='signup_user')
+    new_password = st.text_input('🔒 Choose a password:', type='password', placeholder='Password', key='signup_password')
+    st.button('Sign Up', on_click=handle_signup, args=(new_user, new_password))
+                
 
 def display_user_info(user, user_index):
     with st.expander(f"User: {user['name']}", expanded=True):
@@ -100,11 +149,25 @@ def save_uploaded_file(uploaded_file):
 if "show_token" not in st.session_state:
     st.session_state.show_token = False
 def clicked():
-    if job_posting: 
-        st.session_state.show_token=True
+    if job_posting and job_title: 
+        data=fetch_job_data(st.session_state.username)
+        if data.loc[data['job']==job_title].size:
+            modal = Modal(key="dublicate error", title="Error")
+            with modal.container():
+                st.error('job already exist')
+        else:
+            job_posting_path=f'uploads/{job_posting.name}'
+            st.session_state.token=f'%token%-{job_posting_path}'
+            values=(job_title,job_posting_path,st.session_state.token)
+            add_job(st.session_state.username,values)
+            st.session_state.show_token=True
+            st.session_state.job_title=job_title
+        print(job_title)
         # st.session_state.role_list=["Candidate","Recruiter"]
         # st.session_state.page=1
     else:
+        # st.dialog("Please upload a job posting before proceeding.",width='small')
+
         st.error("Please upload a job posting before proceeding.")
 
 
@@ -122,32 +185,47 @@ if role == "Recruiter" :
 
 
     if st.session_state.login:
+        create_job_database(st.session_state.username)
+        
+
+
         col1,col2=st.columns([5,1])
         with col1:
             st.title("Recruiter Portal")
             st.markdown("---")
+        #logout button
         with col2:
-            if st.button("Logout"):
-                st.session_state.login = False
-                st.session_state.show_token=False
-                st.session_state.role_list = ["Recruiter","Candidate"]
+            st.button("⏪ Logout", on_click=lambda: st.session_state.update(
+                {"login": False,
+                "show_token": False,
+                "role_list": ["Recruiter", "Candidate"]}
+            ))
+                # st.session_state.login = False
+                # st.session_state.show_token=False
+                # st.session_state.role_list = ["Recruiter","Candidate"]
 
-
-        tab1,tab2=st.tabs(['Post a Job', 'Candidate Profiles'])
-
-        with tab1:     
+        # allow to choose 'Post a Job' 'Candidate Profiles' section
+        selected=option_menu(
+            menu_title=None,
+            options=['Post a Job','Candidate Profiles'],
+            icons=['journal-plus','bi-people-fill'],
+            default_index=0,
+            orientation='horizontal',
+            key='options',
+        )
+        if selected=='Post a Job':     
             col1,col2=st.columns([3,2])
             with col1:
-                job_posting = st.file_uploader("Upload Job Posting", type=['pdf', 'docx'])
-                if job_posting: save_uploaded_file(job_posting)
+                job_title=st.text_input('Enter the Job Title :',placeholder='Title')
+                if job_posting:=st.file_uploader("Upload Job Posting", type=['pdf', 'docx'],on_change=lambda: st.session_state.update({'show_token': False})): 
+                    save_uploaded_file(job_posting)
 
 
-                st.button('Generate Token 🎫',on_click=clicked)
+                st.button('Post the Job',on_click=clicked)
         
             if  job_posting and st.session_state.show_token:
                 with  col2:
-                    job_posting_path=f'uploads/{job_posting.name}'
-                    st.session_state.token=f'%token%-{job_posting_path}'
+                
                     progress_bar = col2.progress(0)
                     for percent_complete in range(100):
                         time.sleep(0.01)  # Simulate some delay during token generation
@@ -158,11 +236,17 @@ if role == "Recruiter" :
                     _,colt=st.columns([1,2])
                     with  colt:
 
-                        if st.button('Copy to Clipboard'):
-                            pyperclip.copy(st.session_state.token)
+                        if st.button('Copy to Clipboard',on_click=lambda:pyperclip.copy(st.session_state.token)): 
                             st.success("Text copied to clipboard!")
-        with tab2:
 
+            st.markdown('---')
+            
+
+            st.header("Job List")
+           
+            jobs=fetch_job_data(st.session_state.username)
+            st.dataframe(jobs[['job','token']],hide_index=True,use_container_width=True)
+        else :
             data = fetch_data()
             
             col1, col2 = st.columns([1, 3])
@@ -189,21 +273,21 @@ if role == "Recruiter" :
     else:
         st.title("Recruiter Portal")
         st.markdown("---")
-        st.title('Login')
-        with st.form('login form'):
-            
- 
-            input_user=st.text_input('👤 Enter username :',placeholder='Username')
-            input_password=st.text_input('🔒 Password :', type='password',placeholder='Password')       
+        
+        selected=option_menu(
+            menu_title=None,
+            options=['LogIn','Sign Up'],
+            icons=['bi-box-arrow-in-right','bi-person-plus-fill'],
+            default_index=0,
+            orientation='horizontal',
+            key='loginoptions',
+        )
+        if  selected=='LogIn':
+            login_form()
+        else:
+            signup_form()
 
-            submit_button=st.form_submit_button('Login')
 
-        if submit_button:
-            if input_user == user and input_password == password:
-                st.session_state.login = True
-                st.session_state.role_list = ["Recruiter"]
-            else:
-                st.error('Invalid username or password')
 
 
 
@@ -218,11 +302,12 @@ elif role == "Candidate" :
     
     if st.session_state.page == 1:
         col1,col2=st.columns([1,12])
+        # input token
         with col1:
             st.markdown("# 🎫")
         with col2:
             text=st.text_input('Enter:',placeholder="Enter Token")
-
+        # upload resume
         resume = st.file_uploader("Upload your Resume", type=['pdf', 'docx'])
         if resume: save_uploaded_file(resume)
         st.button("Next", on_click=next_page)
