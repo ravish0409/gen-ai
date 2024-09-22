@@ -168,7 +168,7 @@ def add_data( token, columns, values):
         # Execute the query with the provided values
         cursor.execute(query, values)
         conn.commit()
-        print(f"Data inserted into {token} successfully.")
+        print(f"Data inserted successfully.")
     except Exception as e:
         print(f"An error occurred: {e}")
     finally:

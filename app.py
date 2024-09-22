@@ -247,13 +247,32 @@ if role == "Recruiter" :
             st.markdown('---')
             
 
-            st.header("your job  postings")
-
-           
+            st.header("Your previous job postings")
             jobs=fetch_job_data(st.session_state.username)
             st.dataframe(jobs[['job','token']],hide_index=True,use_container_width=True)
+
+
         else :
-            data = fetch_data()
+
+
+            users_data=fetch_job_data(st.session_state.username)
+            job_list=users_data['job'].tolist()
+            with st.container():
+                st.subheader('Select a job post')
+                selected_job=st.selectbox(" ",job_list)
+            token=users_data.loc[users_data['job']==selected_job,'token'].values[0]
+
+
+            data = fetch_data(token)
+            col1,col2=st.columns([3,2])
+            with col1:
+                st.markdown('---')
+                
+            with  col2:
+                    with st.popover("Top 5 candidates",use_container_width=True):
+                        st.dataframe(data[['name','email','phone_number','score']].head(5),hide_index=True)
+
+            
             
             col1, col2 = st.columns([1, 3])
             
@@ -310,7 +329,7 @@ elif role == "Candidate" :
         with col1:
             st.markdown("# 🎫")
         with col2:
-            text=st.text_input('Enter:',placeholder="Enter Token")
+            text=st.text_input(' ',placeholder="Enter Token")
         # upload resume
         resume = st.file_uploader("Upload your Resume", type=['pdf', 'docx'])
         if resume: save_uploaded_file(resume)
