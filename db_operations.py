@@ -65,7 +65,7 @@ def create_job_database(recruiter):
     # Create a table called "{recruiter}"
     cursor.execute(f'''
     CREATE TABLE IF NOT EXISTS {recruiter} (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY ,
         job TEXT ,
         description TEXT ,
         token TEXT 
@@ -88,7 +88,7 @@ def add_job(recruiter,values):
     placeholders = ', '.join(['?' for _ in values])  # e.g., "?, ?, ?"
     
     # SQL query for inserting data
-    query = f"INSERT INTO {recruiter} (job, description, token) VALUES ({placeholders})"
+    query = f"INSERT INTO {recruiter} (id, job, description, token) VALUES ({placeholders})"
     
     try:
         # Execute the query with the provided values
@@ -116,13 +116,13 @@ def update_job_description(recruiter, job_id, new_description):
     conn.close()
 
 
-def create_database():
+def create_database(token):
     conn = get_db_connection()  # This creates the database file
     cursor = conn.cursor()
 
     # Create a table called "users"
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS users (
+    m=f'''
+    CREATE TABLE IF NOT EXISTS {token} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT ,
         email TEXT ,
@@ -132,23 +132,25 @@ def create_database():
         resume_path TEXT,
         score INTEGER 
     )
-    ''')
+    '''
+    cursor.execute(m)
     
     conn.commit()
     conn.close()
 # Fetch data from the database
-def fetch_data():
+def fetch_data(token):
     conn = get_db_connection()
-    query = "SELECT id, name, email, phone_number, picture, conversation, resume_path, score FROM users order by score DESC"
+    query = f"SELECT id, name, email, phone_number, picture, conversation, resume_path, score FROM {token} order by score DESC"
 
     df = pd.read_sql(query, conn)
     conn.close()
     return df
-def add_data( columns, values):
+def add_data( token, columns, values):
     """
     Insert data into table.
     
     Parameters:
+    - token  (str): table name
     - columns (list): A list of column names where data will be inserted.
     - values (tuple): A tuple of values corresponding to the columns.
     """
@@ -160,21 +162,21 @@ def add_data( columns, values):
     placeholders = ', '.join(['?' for _ in values])  # e.g., "?, ?, ?"
     
     # SQL query for inserting data
-    query = f"INSERT INTO users ({columns_str}) VALUES ({placeholders})"
+    query = f"INSERT INTO {token} ({columns_str}) VALUES ({placeholders})"
     
     try:
         # Execute the query with the provided values
         cursor.execute(query, values)
         conn.commit()
-        print(f"Data inserted into users successfully.")
+        print(f"Data inserted into {token} successfully.")
     except Exception as e:
         print(f"An error occurred: {e}")
     finally:
         conn.close()
 # Update the score for a specific user in the database
-def update_score(user_id, new_score):
+def update_score(token,user_id, new_score):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("UPDATE users SET score = ? WHERE id = ?", (new_score, user_id))
+    cursor.execute(f"UPDATE {token} SET score = ? WHERE id = ?", (new_score, user_id))
     conn.commit()
     conn.close()

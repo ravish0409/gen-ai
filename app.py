@@ -15,7 +15,6 @@ load_dotenv()
 
 create_recruiter_database()
 
-create_database()
 if "role_list" not in  st.session_state:
 
     st.session_state.role_list = ["Recruiter","Candidate"]
@@ -31,9 +30,7 @@ def handle_login(input_user, input_password):
         else:
             st.error('Invalid username or password')
     else:
-        modal = Modal(key="field error", title="Error")
-        with modal.container():
-            st.error('Please fill in all fields')
+        st.error('Please fill in all fields')
 
 # Function to handle signup logic
 def handle_signup(new_user, new_password):
@@ -118,12 +115,17 @@ def display_user_info(user, user_index):
 def next_page():
     if st.session_state.page==1:
         if resume and text:
-            if text==st.session_state.token:
-                st.session_state.job_posting=st.session_state.token.split('-')[-1]
+            
+            try:
+                data=fetch_data(text)
+                st.session_state.token=text
+                _,st.session_state.recruiter,st.session_state.id=st.session_state.token.split('1729')
+                recruiter_data=fetch_job_data(st.session_state.recruiter)
+                st.session_state.job_posting=recruiter_data.loc[recruiter_data['id']==int(st.session_state.id),'description'].values[0]
                 st.session_state.resume=f'uploads/{resume.name}'
                 st.session_state.page = 2
                 st.session_state.role_list = ["Candidate"]
-            else:
+            except:
                 st.error("Invalid token")
         else:
             st.error("provide all info before proceeding.")
@@ -151,18 +153,21 @@ if "show_token" not in st.session_state:
 def clicked():
     if job_posting and job_title: 
         data=fetch_job_data(st.session_state.username)
+        
         if data.loc[data['job']==job_title].size:
             modal = Modal(key="dublicate error", title="Error")
             with modal.container():
                 st.error('job already exist')
         else:
+            id=len(data)+1
             job_posting_path=f'uploads/{job_posting.name}'
-            st.session_state.token=f'%token%-{job_posting_path}'
-            values=(job_title,job_posting_path,st.session_state.token)
+            st.session_state.token=f'token1729{st.session_state.username}1729{id}'
+            values=(id,job_title,job_posting_path,st.session_state.token)
             add_job(st.session_state.username,values)
             st.session_state.show_token=True
             st.session_state.job_title=job_title
-        print(job_title)
+            create_database(st.session_state.token)
+
         # st.session_state.role_list=["Candidate","Recruiter"]
         # st.session_state.page=1
     else:
@@ -242,7 +247,8 @@ if role == "Recruiter" :
             st.markdown('---')
             
 
-            st.header("Job List")
+            st.header("your job  postings")
+
            
             jobs=fetch_job_data(st.session_state.username)
             st.dataframe(jobs[['job','token']],hide_index=True,use_container_width=True)
@@ -294,9 +300,7 @@ if role == "Recruiter" :
 elif role == "Candidate" :
     
     st.title('Candidate Portal')
-    st.markdown('---')
-    if 'token' not in st.session_state:
-        st.session_state.token=os.getenv('token')    
+    st.markdown('---')  
     if 'page' not in st.session_state:
         st.session_state.page = 1
     
@@ -405,7 +409,7 @@ elif role == "Candidate" :
                 values = (st.session_state.name, st.session_state.email, st.session_state.phone, 
                         st.session_state.picture, st.session_state.stm, st.session_state.resume, 
                         st.session_state.score)
-                add_data(column, values)
+                add_data(st.session_state.token,column, values)
                 st.session_state.saved = 1
                 st.success("thank you for participating!")
 else:
