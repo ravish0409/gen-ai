@@ -2,7 +2,7 @@ import streamlit as st
 import time
 from PIL import Image
 import os
-from db_operations import fetch_data, update_score, create_database, add_data,add_recruiter,create_recruiter_database,fetch_recruiter_data,create_job_database,add_job,fetch_job_data,update_job_description
+from db_operations import fetch_data, delete_candidate_database, create_database, add_data,add_recruiter,create_recruiter_database,fetch_recruiter_data,create_job_database,add_job,fetch_job_data,delete_job
 from apicall import get_questions,get_score
 import random
 from dotenv import load_dotenv
@@ -18,6 +18,28 @@ create_recruiter_database()
 if "role_list" not in  st.session_state:
 
     st.session_state.role_list = ["Recruiter","Candidate"]
+
+def validate(what,input):
+    if what == "email":
+        if not "@" in input and "." in input:
+            st.error('Enter a valid email')
+    elif  what == "phone":
+        if not input.isdigit():
+            st.error('Enter a valid phone number')
+    
+    elif  what == "username":
+        if any(char in input for char in " !@#$%^&*()_+-={}:<>"):
+            st.error(" Username should not contain any special characters")
+
+    elif what== "name":
+        if any(char in input for char in "!@#$%^&*()_+-={}:<>"):
+            st.error("Name should not contain any special characters")
+    
+    elif what== 'phone':
+        if len(input) != 10 and not input.isdigit():
+            st.error('Enter a valid phone number')
+
+
 
 
 def handle_login(input_user, input_password):
@@ -53,6 +75,7 @@ def handle_signup(new_user, new_password):
 def login_form():
     st.title('Login')
     input_user = st.text_input('👤 Enter username:', placeholder='Username', key='login_user')
+
     input_password = st.text_input('🔒 Password:', type='password', placeholder='Password', key='login_password')
     st.button('Login', on_click=handle_login, args=(input_user, input_password))
 
@@ -60,6 +83,7 @@ def login_form():
 def signup_form():
     st.title('Sign Up')
     new_user = st.text_input('👤 Choose a username:', placeholder='Username', key='signup_user')
+
     new_password = st.text_input('🔒 Choose a password:', type='password', placeholder='Password', key='signup_password')
     st.button('Sign Up', on_click=handle_signup, args=(new_user, new_password))
                 
@@ -159,7 +183,8 @@ def clicked():
             with modal.container():
                 st.error('job already exist')
         else:
-            id=len(data)+1
+
+            id=int(data['id'].values[-1])+1
             job_posting_path=f'uploads/{job_posting.name}'
             st.session_state.token=f'token1729{st.session_state.username}1729{id}'
             values=(id,job_title,job_posting_path,st.session_state.token)
@@ -246,54 +271,92 @@ if role == "Recruiter" :
 
             st.markdown('---')
             
-
+ 
             st.header("Your previous job postings")
             jobs=fetch_job_data(st.session_state.username)
-            st.dataframe(jobs[['job','token']],hide_index=True,use_container_width=True)
+            # st.dataframe(jobs[['job','token']],hide_index=True,use_container_width=True)
+            event = st.dataframe(
+                jobs[['job','token']],
+                use_container_width=True,
+                hide_index=True,
+                on_select="rerun",
+                selection_mode="multi-row",
+            )
 
+            people = event.selection.rows
+            if people:
+                ids=jobs.iloc[people]['id'].values
+                st.subheader("Selected jobs")
+                cold1,cold2=st.columns([2,3])
+                with cold1:
+                    st.dataframe(jobs.iloc[people]['job'],hide_index=True,width=300)
+                with cold2:
+                    if st.button('Delete'):
+                        for id in ids:
+                            delete_job(st.session_state.username,int(id))
+                            delete_candidate_database(jobs.loc[jobs['id']==id,'token'].values[0])
+                            st.rerun()
+            else:
+                st.markdown('---')
+                st.subheader('Select to delete job postings')
+
+
+
+            # st.header("Selected members")
+
+            
+            # st.write(people)
+            # filtered_df = jobs.iloc[people]
+            # st.dataframe(
+            #     filtered_df,
+            #     use_container_width=True,
+            # )
 
         else :
-
-
             users_data=fetch_job_data(st.session_state.username)
             job_list=users_data['job'].tolist()
             with st.container():
                 st.subheader('Select a job post')
                 selected_job=st.selectbox(" ",job_list)
-            token=users_data.loc[users_data['job']==selected_job,'token'].values[0]
+            try:
+                token=users_data.loc[users_data['job']==selected_job,'token'].values[0]
+            except:
+                token=None
+                st.info(' No job postings available')
 
 
-            data = fetch_data(token)
-            col1,col2=st.columns([3,2])
-            with col1:
-                st.markdown('---')
+            if token:
+                data = fetch_data(token)
+                col1,col2=st.columns([3,2])
+                with col1:
+                    st.markdown('---')
+                    
+                with  col2:
+                        with st.popover("Top 5 candidates",use_container_width=True):
+                            st.dataframe(data[['name','email','phone_number','score']].head(5),hide_index=True)
+
                 
-            with  col2:
-                    with st.popover("Top 5 candidates",use_container_width=True):
-                        st.dataframe(data[['name','email','phone_number','score']].head(5),hide_index=True)
-
-            
-            
-            col1, col2 = st.columns([1, 3])
-            
-            with col1:
-                st.subheader("User Selection")
-                names = ['All'] + [f'{i}. {v}' for i,v in zip(data['id'],data['name'])]
-                selected_name = st.selectbox("Select a user:", names)
-                st.markdown("### Quick Stats")
-                st.metric("Total Users", len(data))
-                st.metric("Max Score", data['score'].max())
-            
-            with col2:
-                st.subheader("User Information and Scoring")
-                if selected_name == 'All':
-                    st.info("Displaying information for all users")
-                    for index, user in data.iterrows():
-                        display_user_info(user, index)
-                else:
-                    id=int(selected_name.split('. ')[0])
-                    selected_user = data[data['id'] == id].iloc[0]
-                    display_user_info(selected_user, id)
+                
+                col1, col2 = st.columns([1, 3])
+                
+                with col1:
+                    st.subheader("User Selection")
+                    names = ['All'] + [f'{i}. {v}' for i,v in zip(data['id'],data['name'])]
+                    selected_name = st.selectbox("Select a user:", names)
+                    st.markdown("### Quick Stats")
+                    st.metric("Total Users", len(data))
+                    st.metric("Max Score", data['score'].max())
+                
+                with col2:
+                    st.subheader("User Information and Scoring")
+                    if selected_name == 'All':
+                        st.info("Displaying information for all users")
+                        for index, user in data.iterrows():
+                            display_user_info(user, index)
+                    else:
+                        id=int(selected_name.split('. ')[0])
+                        selected_user = data[data['id'] == id].iloc[0]
+                        display_user_info(selected_user, id)
 
     else:
         st.title("Recruiter Portal")
@@ -337,9 +400,14 @@ elif role == "Candidate" :
         
     elif st.session_state.page == 2:
         st.header("Candidate Information")
-        name = st.text_input("Name")
-        email = st.text_input("Email")
-        phone = st.text_input("Phone")
+
+        name = st.text_input("Name",placeholder='Enter your name' )
+
+        email = st.text_input("Email",placeholder=' Enter your email')
+
+        phone = st.text_input("Phone", placeholder='Enter your phone number')
+
+
         col1,col2=st.columns([1,1])
         # picture_upload = col1.file_uploader("Upload your picture", type=['jpg', 'png'])
         picture = col2.camera_input("your picture")

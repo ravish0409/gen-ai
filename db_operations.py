@@ -108,12 +108,16 @@ def fetch_job_data(recruiter):
     conn.close()
     return df
 
-def update_job_description(recruiter, job_id, new_description):
-    conn = get_db_connection()
+
+def  delete_job(recruiter, job_id):
+
+    conn=  get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(f"UPDATE {recruiter} SET description = ? WHERE id = ?", (new_description, job_id))
+    cursor.execute(f"DELETE FROM {recruiter} WHERE id = ?", (job_id,))
     conn.commit()
-    conn.close()
+    conn.close()    
+
+
 
 
 def create_database(token):
@@ -173,10 +177,12 @@ def add_data( token, columns, values):
         print(f"An error occurred: {e}")
     finally:
         conn.close()
-# Update the score for a specific user in the database
-def update_score(token,user_id, new_score):
+
+def delete_candidate_database(token):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(f"UPDATE {token} SET score = ? WHERE id = ?", (new_score, user_id))
+    query = f"DROP TABLE {token}"
+    cursor.execute(query)
     conn.commit()
-    conn.close()
+    conn.close
+
