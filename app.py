@@ -83,13 +83,13 @@ def login_form():
 def signup_form():
     st.title('Sign Up')
     new_user = st.text_input('👤 Choose a username:', placeholder='Username', key='signup_user')
-
     new_password = st.text_input('🔒 Choose a password:', type='password', placeholder='Password', key='signup_password')
+    company=st.text_input("🏬 Company:",placeholder='Company')
     st.button('Sign Up', on_click=handle_signup, args=(new_user, new_password))
                 
 
 def display_user_info(user, user_index):
-    with st.expander(f"User: {user['name']}", expanded=True):
+    with st.expander(f"Candidate: {user['name']}", expanded=True):
         col1, col2 = st.columns([1, 2])
         
         with col1:
@@ -183,8 +183,10 @@ def clicked():
             with modal.container():
                 st.error('job already exist')
         else:
-
-            id=int(data['id'].values[-1])+1
+            if len(data)>0:
+                id=int(data['id'].values[-1])+1
+            else:
+                id=1
             job_posting_path=f'uploads/{job_posting.name}'
             st.session_state.token=f'token1729{st.session_state.username}1729{id}'
             values=(id,job_title,job_posting_path,st.session_state.token)
@@ -272,7 +274,7 @@ if role == "Recruiter" :
             st.markdown('---')
             
  
-            st.header("Your previous job postings")
+            st.markdown("### Your :blue-background[Previous] Job postings")
             jobs=fetch_job_data(st.session_state.username)
             # st.dataframe(jobs[['job','token']],hide_index=True,use_container_width=True)
             event = st.dataframe(
@@ -298,7 +300,8 @@ if role == "Recruiter" :
                             st.rerun()
             else:
                 st.markdown('---')
-                st.subheader('Select to delete job postings')
+                st.info('Select to delete job postings')
+                    
 
 
 
@@ -328,29 +331,46 @@ if role == "Recruiter" :
             if token:
                 data = fetch_data(token)
                 col1,col2=st.columns([3,2])
-                with col1:
-                    st.markdown('---')
-                    
-                with  col2:
-                        with st.popover("Top 5 candidates",use_container_width=True):
-                            st.dataframe(data[['name','email','phone_number','score']].head(5),hide_index=True)
+                st.markdown("## :blue[Applied Candidates]")
+                event = st.dataframe(
+                    data[['name','email','phone_number','score']],
+                    use_container_width=True,
+                    hide_index=True,
+                    on_select="rerun",
+                    selection_mode="multi-row",
+                )
 
-                
-                
+                people = event.selection.rows
+                if people:
+                    st.divider()
+                    st.subheader("Selected candidate/s")
+                    cold1,cold2=st.columns([6,4])
+                    with cold1:
+                        st.dataframe(data.iloc[people][['name','email','phone_number','score']],hide_index=True,use_container_width=True)
+                    with cold2:
+                        st.info('download the selected  candidate/s')
+                    st.divider()
+                else:
+                    st.markdown('---')
+                    st.info('Select candidates!!')
+                    st.markdown('---')
+
+
+
                 col1, col2 = st.columns([1, 3])
                 
                 with col1:
-                    st.subheader("User Selection")
+                    st.subheader("Candidate Selection")
                     names = ['All'] + [f'{i}. {v}' for i,v in zip(data['id'],data['name'])]
-                    selected_name = st.selectbox("Select a user:", names)
+                    selected_name = st.selectbox("Select a Candidate:", names)
                     st.markdown("### Quick Stats")
-                    st.metric("Total Users", len(data))
+                    st.metric("Total Candidates", len(data))
                     st.metric("Max Score", data['score'].max())
                 
                 with col2:
-                    st.subheader("User Information and Scoring")
+                    st.subheader("Candidate Information and Scoring")
                     if selected_name == 'All':
-                        st.info("Displaying information for all users")
+                        st.info("Displaying information for all Candidates")
                         for index, user in data.iterrows():
                             display_user_info(user, index)
                     else:
@@ -425,12 +445,12 @@ elif role == "Candidate" :
                 st.session_state.questions = get_questions(st.session_state.job_posting,st.session_state.resume)+['do you like to share something']
             except:
                 st.session_state.questions =[ 
-                    "What is your expected salary range?",
-                    "Can you share your date of birth?",
-                    "Do you have experience in [skill from job posting]?",
-                    "What are your preferred work hours?",
-                    "Can you tell us about a challenging project you've worked on?",
-                    'do you like to share something', 
+                    "1. What is your expected salary range?",
+                    "2. Can you share your date of birth?",
+                    "3. Do you have experience in [skill from job posting]?",
+                    "4. What are your preferred work hours?",
+                    "5. Can you tell us about a challenging project you've worked on?",
+                    '6. do you like to share something', 
                     ]
         if "question_index" not in st.session_state:
             st.session_state.question_index = 0  # To keep track of the current question
