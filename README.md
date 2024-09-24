@@ -93,13 +93,6 @@ To install Gen-AI, follow these steps:
    OPENAI_API_KEY=your_api_key_here
    ```
 
-3. add login credentials 
-
-   ```
-   username = user
-   password = 1234
-   ```
-
 ## Running the Application
 
 To run Gen-AI, follow these steps:
