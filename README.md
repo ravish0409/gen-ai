@@ -53,15 +53,9 @@ Once the interview is complete, the system ensures all candidate data, including
 
 To handle data efficiently:
 
-- Job postings, candidate information, and interview results are stored in a central **Database**.
+- Job postings, candidate information, and recruiter information are stored in a central **Database**.
 - Resumes and images are stored in a **File Storage** system, ensuring easy access for recruiters when reviewing candidates.
 
-## Prerequisites
-
-Before you begin, ensure you have met the following requirements:
-* You have a **Python 3.7+** environment
-* You have a **GitHub** account
-* You have an **OpenAI API** key
 
 ## Installation
 
