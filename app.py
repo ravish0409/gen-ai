@@ -2,13 +2,16 @@ import streamlit as st
 import time
 from PIL import Image
 import os
-from db_operations import fetch_data, delete_candidate_database, create_database, add_data,add_recruiter,create_recruiter_database,fetch_recruiter_data,create_job_database,add_job,fetch_job_data,delete_job
+from db_operations import *
 from apicall import get_questions,get_score
 import random
 from dotenv import load_dotenv
 import pyperclip
 from streamlit_option_menu import option_menu
 from streamlit_modal import Modal
+from candidate_help import *
+from recruiter_help import *
+
 
 load_dotenv()
 
@@ -42,100 +45,8 @@ def validate(what,input):
 
 
 
-def handle_login(input_user, input_password):
-    if input_user and input_password:
-        data=fetch_recruiter_data()
-        if data.loc[(data["username"]== input_user) & (data['password']==input_password)].size:
-            st.session_state['login'] = True
-            st.session_state['username'] = input_user
-            st.session_state.role_list=["Recruiter"]
-        else:
-            st.error('Invalid username or password')
-    else:
-        st.error('Please fill in all fields')
+            
 
-# Function to handle signup logic
-def handle_signup(new_user, new_password):
-    if  new_user and new_password:
-
-        data=fetch_recruiter_data()
-        if  data.loc[data['username']==new_user].size:
-            st.error('Username already exists. Please choose another.')
-        else:
-            values=(new_user, new_password)
-            add_recruiter(values)
-            st.session_state['login'] = True
-            st.session_state['username'] = new_user
-            st.session_state.role_list=["Recruiter"]
-    else:
-        st.error('Please fill in all fields')
-        
-
-# Login form
-def login_form():
-    st.title('Login')
-    input_user = st.text_input('👤 Enter username:', placeholder='Username', key='login_user')
-
-    input_password = st.text_input('🔒 Password:', type='password', placeholder='Password', key='login_password')
-    st.button('Login', on_click=handle_login, args=(input_user, input_password))
-
-# Signup form
-def signup_form():
-    st.title('Sign Up')
-    new_user = st.text_input('👤 Choose a username:', placeholder='Username', key='signup_user')
-    new_password = st.text_input('🔒 Choose a password:', type='password', placeholder='Password', key='signup_password')
-    company=st.text_input("🏬 Company:",placeholder='Company')
-    st.button('Sign Up', on_click=handle_signup, args=(new_user, new_password))
-                
-
-def display_user_info(user, user_index):
-    with st.expander(f"Candidate: {user['name']}", expanded=True):
-        col1, col2 = st.columns([1, 2])
-        
-        with col1:
-            if user['picture'] and user['picture'] != 'None':
-                try:
-                    st.image(user['picture'], width=150)
-                except:
-                    st.image("https://via.placeholder.com/150", width=150, caption="No image available")
-            else:
-                st.image("https://via.placeholder.com/150", width=150, caption="No image available")
-        
-        with col2:
-            st.markdown(f"**Email:** {user['email']}")
-            st.markdown(f"**Phone:** {user['phone_number']}")
-            st.markdown(f"**Score:** {user['score']}")
-        
-        st.markdown("### Conversation")
-        st.text_area(
-            label="User Conversation",
-            value=user['conversation'],
-            height=150,
-            disabled=True,
-            key=f"conversation_{user_index}",
-            label_visibility="collapsed"
-        )
-        
-        st.markdown("### Resume")
-        if user['resume_path']:
-            filepath=user['resume_path']
-            folder,filename=filepath.split('/')
-            try: 
-                with open(filepath, 'rb') as f:
-                    file_data = f.read()
-                    
-                st.download_button(
-                    label=f"Download {filename}",
-                    data=file_data,
-                    file_name=filename,
-                    mime='application/octet-stream',
-                    key=f"download_button_{user_index}_{filename}"
-                )
-            except:
-                st.write("No resume available")
-
-        else:
-            st.warning("No resume available")
 def next_page():
     if st.session_state.page==1:
         if resume and text:
@@ -217,7 +128,6 @@ if role == "Recruiter" :
 
 
     if st.session_state.login:
-        create_job_database(st.session_state.username)
         
 
 
@@ -344,7 +254,7 @@ if role == "Recruiter" :
                 if people:
                     st.divider()
                     st.subheader("Selected candidate/s")
-                    cold1,cold2=st.columns([6,4])
+                    cold1,cold2=st.columns([5,3])
                     with cold1:
                         st.dataframe(data.iloc[people][['name','email','phone_number','score']],hide_index=True,use_container_width=True)
                     with cold2:
