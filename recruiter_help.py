@@ -14,9 +14,9 @@ def handle_login(input_user, input_password):
         st.error('Please fill in all fields')
 
 # Function to handle signup logic
-def handle_signup(new_user, new_password):
+def handle_signup(new_user, new_password,company):
     
-    if  new_user and new_password:
+    if  new_user and new_password and company:
         if any(char in new_user for char in """ []'"!@#$%^&*()?|\/.,_+-={}:<>""") or new_user[0].isdigit():
             st.error(" Username should not contain any special characters and should not start with a number")
 
@@ -25,7 +25,7 @@ def handle_signup(new_user, new_password):
             if  data.loc[data['username']==new_user].size:
                 st.error('Username already exists. Please choose another.')
             else:
-                values=(new_user, new_password)
+                values=(new_user, new_password,company)
                 add_recruiter(values)
                 st.session_state['login'] = True
                 st.session_state['username'] = new_user
@@ -49,7 +49,7 @@ def signup_form():
     new_user = st.text_input('👤 Choose a username:', placeholder='Username', key='signup_user')
     new_password = st.text_input('🔒 Choose a password:', type='password', placeholder='Password', key='signup_password')
     company=st.text_input("🏬 Company:",placeholder='Company')
-    st.button('Sign Up', on_click=handle_signup, args=(new_user, new_password))
+    st.button('Sign Up', on_click=handle_signup, args=(new_user, new_password,company))
     
 
 def display_user_info(user, user_index):

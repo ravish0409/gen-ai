@@ -1,7 +1,5 @@
 import streamlit as st
 import time
-from PIL import Image
-import os
 from db_operations import *
 from apicall import get_questions,get_score
 import random
@@ -47,37 +45,6 @@ def validate(what,input):
 
             
 
-def next_page():
-    if st.session_state.page==1:
-        if resume and text:
-            
-            try:
-                data=fetch_data(text)
-                st.session_state.token=text
-                _,st.session_state.recruiter,st.session_state.id=st.session_state.token.split('1729')
-                recruiter_data=fetch_job_data(st.session_state.recruiter)
-                st.session_state.job_posting=recruiter_data.loc[recruiter_data['id']==int(st.session_state.id),'description'].values[0]
-                st.session_state.resume=f'uploads/{resume.name}'
-                st.session_state.page = 2
-                st.session_state.role_list = ["Candidate"]
-            except:
-                st.error("Invalid token")
-        else:
-            st.error("provide all info before proceeding.")
-            
-    elif st.session_state.page==2:
-            if name and email and phone and picture:
-                st.session_state.name = name
-                st.session_state.email = email
-                st.session_state.phone = phone
-                image = Image.open(picture)
-                image_path = os.path.join('images', f'{name}-{phone[:4]}.png')
-                image.save(image_path)
-                st.session_state.picture = image_path
-                st.session_state.page = 3
-
-            else:
-                st.error("Please fill in all fields and upload a picture.")
 
 def save_uploaded_file(uploaded_file):
     with open(f"./uploads/{uploaded_file.name}", "wb") as f:
@@ -104,7 +71,7 @@ def clicked():
             add_job(st.session_state.username,values)
             st.session_state.show_token=True
             st.session_state.job_title=job_title
-            create_database(st.session_state.token)
+            create_apply_candidates_table(st.session_state.token)
 
         # st.session_state.role_list=["Candidate","Recruiter"]
         # st.session_state.page=1
@@ -128,8 +95,6 @@ if role == "Recruiter" :
 
 
     if st.session_state.login:
-        
-
 
         col1,col2=st.columns([5,1])
         with col1:
@@ -159,7 +124,7 @@ if role == "Recruiter" :
             col1,col2=st.columns([3,2])
             with col1:
                 job_title=st.text_input('Enter the Job Title :',placeholder='Title')
-                if job_posting:=st.file_uploader("Upload Job Posting", type=['pdf', 'docx'],on_change=lambda: st.session_state.update({'show_token': False})): 
+                if job_posting:=st.file_uploader("Upload Job Posting", type=['pdf', 'docx']): 
                     save_uploaded_file(job_posting)
 
 
@@ -172,14 +137,14 @@ if role == "Recruiter" :
                     for percent_complete in range(100):
                         time.sleep(0.01)  # Simulate some delay during token generation
                         progress_bar.progress(percent_complete + 1)
-                    with st.container(border=True):
-                        with st.chat_message("🎫"):
-                            st.markdown(st.session_state.token)
-                    _,colt=st.columns([1,2])
-                    with  colt:
+            #         with st.container(border=True):
+            #             with st.chat_message("🎫"):
+            #                 st.markdown(st.session_state.token)
+            #         _,colt=st.columns([1,2])
+            #         with  colt:
 
-                        if st.button('Copy to Clipboard',on_click=lambda:pyperclip.copy(st.session_state.token)): 
-                            st.success("Text copied to clipboard!")
+            #             if st.button('Copy to Clipboard',on_click=lambda:pyperclip.copy(st.session_state.token)): 
+            #                 st.success("Text copied to clipboard!")
 
             st.markdown('---')
             
@@ -206,7 +171,7 @@ if role == "Recruiter" :
                     if st.button('Delete'):
                         for id in ids:
                             delete_job(st.session_state.username,int(id))
-                            delete_candidate_database(jobs.loc[jobs['id']==id,'token'].values[0])
+                            delete_jobs_apply_database(jobs.loc[jobs['id']==id,'token'].values[0])
                             st.rerun()
             else:
                 st.markdown('---')
@@ -239,7 +204,7 @@ if role == "Recruiter" :
 
 
             if token:
-                data = fetch_data(token)
+                data = fetch_applied_candidate_data(token)
                 col1,col2=st.columns([3,2])
                 st.markdown("## :blue[Applied Candidates]")
                 event = st.dataframe(
@@ -308,126 +273,203 @@ if role == "Recruiter" :
 
 
 
-
 elif role == "Candidate" :
-    
-    st.title('Candidate Portal')
-    st.markdown('---')  
-    if 'page' not in st.session_state:
-        st.session_state.page = 1
-    
-    if st.session_state.page == 1:
-        col1,col2=st.columns([1,12])
-        # input token
-        with col1:
-            st.markdown("# 🎫")
-        with col2:
-            text=st.text_input(' ',placeholder="Enter Token")
-        # upload resume
-        resume = st.file_uploader("Upload your Resume", type=['pdf', 'docx'])
-        if resume: save_uploaded_file(resume)
-        st.button("Next", on_click=next_page)
-        
-    elif st.session_state.page == 2:
-        st.header("Candidate Information")
+    create_candidate_database() 
+    if 'candidate_login' not in  st.session_state:
+        st.session_state.candidate_login = False
 
-        name = st.text_input("Name",placeholder='Enter your name' )
+    if  st.session_state.cNgin:
+        st.session_state.role_list = ["Candidate"]
+        data=fetch_candidate_data()
+        candidate_record=data.loc[data['id']==st.session_state.candidate_id]
+        if int(candidate_record['all_fields_fill'].values[-1]):
+            if 'page' not in st.session_state:
+                st.session_state.page = 1
+            if st.session_state.page == 1:
+                col1,col2=st.columns([5,1])
+                with col1:
+                    st.title("Candidate Portal")
+                    st.markdown("---")
+                #logout button
+                with col2:
+                    st.button("⏪ Logout", on_click=lambda: st.session_state.update(
+                        {"candidate_login": False,
+                        "role_list": ["Recruiter", "Candidate"]}
+                    ))
+                recuiters_data=fetch_recruiter_data()
+                all_company=recuiters_data['company'].tolist()
+                col1,col2=st.columns(2)
+                with col1:
+                    company=st.selectbox('choose company',all_company)
+                with  col2:
+                    if company:
+                        try:
+                            recuiters_data_username=recuiters_data.loc[recuiters_data['company']==company]['username'].values[-1]
+                            company_job_data=fetch_job_data(recuiters_data_username)
+                            job_list=company_job_data['job'].tolist()
+                            job=st.selectbox('select job',job_list)
+                            st.session_state.token,st.session_state.job_posting=company_job_data.loc[company_job_data['job']==job][['token','description']].values[-1]
+                            see=fetch_applied_candidate_data(st.session_state.token)
+                            candidate_data=fetch_candidate_data()
+                            current_cabdidate_number=candidate_data.loc[candidate_data['id']==st.session_state.candidate_id]['phone_number'].values[-1]
+                            exist=see.loc[see['phone_number']==current_cabdidate_number].size
+                            if  exist:
+                                st.info('you already applied')
+                                button_enable=True
+                            else:
+                                button_enable=False
 
-        email = st.text_input("Email",placeholder=' Enter your email')
-
-        phone = st.text_input("Phone", placeholder='Enter your phone number')
-
-
-        col1,col2=st.columns([1,1])
-        # picture_upload = col1.file_uploader("Upload your picture", type=['jpg', 'png'])
-        picture = col2.camera_input("your picture")
-
-        st.button("Start Interview", on_click=next_page)
-
-    elif st.session_state.page == 3:
-        if "messages" not in st.session_state:
-            st.session_state.messages = []
-            st.session_state.stm=''
-
-        if 'questions' not in st.session_state:
-            print("one time")
-            try:
-                st.session_state.questions = get_questions(st.session_state.job_posting,st.session_state.resume)+['do you like to share something']
-            except:
-                st.session_state.questions =[ 
-                    "1. What is your expected salary range?",
-                    "2. Can you share your date of birth?",
-                    "3. Do you have experience in [skill from job posting]?",
-                    "4. What are your preferred work hours?",
-                    "5. Can you tell us about a challenging project you've worked on?",
-                    '6. do you like to share something', 
-                    ]
-        if "question_index" not in st.session_state:
-            st.session_state.question_index = 0  # To keep track of the current question
-
-        # List of questions to be asked
-        question_list = st.session_state.questions
-        # question_list=[ 
-        #     "What is your expected salary range?",
-        #     "Can you share your date of birth?",
-        #     "Do you have experience in [skill from job posting]?",
-        #     "What are your preferred work hours?",
-        #     "Can you tell us about a challenging project you've worked on?",
-        #     'do you like to share something', 
-        # ]
-
-        def get_q(index):
-            for i in question_list[index].split():
-                yield i+' '
-                time.sleep(0.05)
-        # Function to display chat history
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
-
-        # If there are still questions left to ask
-        if st.session_state.question_index < len(question_list)-1:
-            current_question = question_list[st.session_state.question_index]
-            
-            # Show the current question in the chat
-            with st.chat_message("system"):
-                st.markdown(current_question)
-                
-
-            # Get user's response
-            if prompt := st.chat_input("Enter your answer"):
-                with st.chat_message("user"):
-                    st.markdown(prompt)
+                        except:
+                            st.info('no job available for this company')
+                            button_enable=True
+                             
+                    else:
+                        st.write(' ')
+                        st.info('No companies yet')
+                st.button("apply",on_click= lambda:st.session_state.update({'page':2,}),disabled=button_enable)
                     
-                
-                # Add both question and user response to chat history
-                st.session_state.messages.append({"role": "system", "content": current_question})
-                st.session_state.stm+='Q'+current_question+"\n"
-                st.session_state.messages.append({"role": "user", "content": prompt})
-                st.session_state.stm+='Answer: '+prompt+'\n'
-                
-                # Move to the next question
-                st.session_state.question_index += 1
-                time.sleep(0.4)
-                with st.chat_message("system"):
-                    st.write(get_q(st.session_state.question_index))
+
+
+
+            elif st.session_state.page == 2:
+                if "messages" not in st.session_state:
+                    st.session_state.messages = []
+                    st.session_state.stm=''
+
+                if 'questions' not in st.session_state:
+                    print("one time")
+                    try:
+                        st.session_state.questions = get_questions(st.session_state.job_posting,st.session_state.resume)+['do you like to share something']
+                    except:
+                        st.session_state.questions =[ 
+                            "1. What is your expected salary range?",
+                            "2. Can you share your date of birth?",
+                            "3. Do you have experience in [skill from job posting]?",
+                            "4. What are your preferred work hours?",
+                            "5. Can you tell us about a challenging project you've worked on?",
+                            '6. do you like to share something', 
+                            ]
+                if "question_index" not in st.session_state:
+                    st.session_state.question_index = 0  # To keep track of the current question
+
+                # List of questions to be asked
+                question_list = st.session_state.questions
+                # question_list=[ 
+                #     "What is your expected salary range?",
+                #     "Can you share your date of birth?",
+                #     "Do you have experience in [skill from job posting]?",
+                #     "What are your preferred work hours?",
+                #     "Can you tell us about a challenging project you've worked on?",
+                #     'do you like to share something', 
+                # ]
+
+                def get_q(index):
+                    for i in question_list[index].split():
+                        yield i+' '
+                        time.sleep(0.05)
+                # Function to display chat history
+                for message in st.session_state.messages:
+                    with st.chat_message(message["role"]):
+                        st.markdown(message["content"])
+
+                # If there are still questions left to ask
+                if st.session_state.question_index < len(question_list)-1:
+                    current_question = question_list[st.session_state.question_index]
+                    
+                    # Show the current question in the chat
+                    with st.chat_message("system"):
+                        st.markdown(current_question)
+                        
+
+                    # Get user's response
+                    if prompt := st.chat_input("Enter your answer"):
+                        with st.chat_message("user"):
+                            st.markdown(prompt)
+                            
+                        
+                        # Add both question and user response to chat history
+                        st.session_state.messages.append({"role": "system", "content": current_question})
+                        st.session_state.stm+='Q'+current_question+"\n"
+                        st.session_state.messages.append({"role": "user", "content": prompt})
+                        st.session_state.stm+='Answer: '+prompt+'\n'
+                        
+                        # Move to the next question
+                        st.session_state.question_index += 1
+                        time.sleep(0.4)
+                        with st.chat_message("system"):
+                            st.write(get_q(st.session_state.question_index))
+                else:
+                    # print(st.session_state.stm)
+
+                    if "score" not in st.session_state:
+                        try:
+                            st.session_state.score = get_score(st.session_state.resume, st.session_state.stm)
+                        except:
+                            st.session_state.score = random.randint(15, 40)
+
+
+                    if 'saved' not in st.session_state and 'score' in st.session_state:
+                        cand_data=fetch_candidate_data()
+                        candidate_details=cand_data.loc[cand_data['username']==st.session_state.candidate_username]
+                        _,_,_,st.session_state.name, st.session_state.email, st.session_state.phone, st.session_state.picture,st.session_state.resume,_=candidate_details.values[-1]
+                        column = ['name', 'email', 'phone_number', 'picture', 'conversation', 'resume_path', 'score']
+                        values = (st.session_state.name, st.session_state.email, st.session_state.phone, 
+                                st.session_state.picture, st.session_state.stm, st.session_state.resume, 
+                                st.session_state.score)
+                        add_applied_candidate_data(st.session_state.token,column, values)
+                        st.session_state.saved = 1
+                        st.success("thank you for participating!")
+                        progress_bar = st.progress(0)
+                        for percent_complete in range(100):
+                            time.sleep(0.5)  # Simulate some delay during token generation
+                            progress_bar.progress(percent_complete + 1)
+                        st.session_state.page=1
+                        st.rerun()
+
         else:
-            # print(st.session_state.stm)
+            col1,col2=st.columns([5,1])
+            with col1:
+                st.title("Candidate Portal")
+                st.markdown("---")
+            #logout button
+            with col2:
+                st.button("⏪ Logout", on_click=lambda: st.session_state.update(
+                    {"candidate_login": False,
+                    "role_list": ["Recruiter", "Candidate"]}
+                ))
+            st.header("Candidate Information")
 
-            if "score" not in st.session_state:
-                try:
-                    st.session_state.score = get_score(st.session_state.resume, st.session_state.stm)
-                except:
-                    st.session_state.score = random.randint(15, 40)
+            name = st.text_input("Name",placeholder='Enter your name' )
+
+            email = st.text_input("Email",placeholder=' Enter your email')
+
+            phone = st.text_input("Phone", placeholder='Enter your phone number')
 
 
-            if 'saved' not in st.session_state and 'score' in st.session_state:
-                column = ['name', 'email', 'phone_number', 'picture', 'conversation', 'resume_path', 'score']
-                values = (st.session_state.name, st.session_state.email, st.session_state.phone, 
-                        st.session_state.picture, st.session_state.stm, st.session_state.resume, 
-                        st.session_state.score)
-                add_data(st.session_state.token,column, values)
-                st.session_state.saved = 1
-                st.success("thank you for participating!")
+            col1,col2=st.columns([1,1])
+            with col1:
+                resume = st.file_uploader("Upload your Resume", type=['pdf', 'docx'])
+                if resume: save_uploaded_file(resume)
+            # picture_upload = col1.file_uploader("Upload your picture", type=['jpg', 'png'])
+            picture = col2.camera_input("your picture")
+
+            st.button("Save", on_click=save_details,args=(name,email,phone,picture,resume,))
+           
+
+    else:
+        st.title("Candidate Portal")
+        st.markdown("---")
+        selected=option_menu(
+            menu_title=None,
+            options=['LogIn','Sign Up'],
+            icons=['bi-box-arrow-in-right','bi-person-plus-fill'],
+            default_index=0,
+            orientation='horizontal',
+            key='loginoptionscandidate',
+        )
+        if  selected=='LogIn':
+            candidate_login_form()
+        else:
+            candidate_signup_form()
 else:
     st.warning("Please login first")
