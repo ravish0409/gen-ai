@@ -278,7 +278,7 @@ elif role == "Candidate" :
     if 'candidate_login' not in  st.session_state:
         st.session_state.candidate_login = False
 
-    if  st.session_state.cNgin:
+    if  st.session_state.candidate_login:
         st.session_state.role_list = ["Candidate"]
         data=fetch_candidate_data()
         candidate_record=data.loc[data['id']==st.session_state.candidate_id]
