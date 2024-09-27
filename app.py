@@ -283,6 +283,7 @@ elif role == "Candidate" :
         data=fetch_candidate_data()
         candidate_record=data.loc[data['id']==st.session_state.candidate_id]
         if int(candidate_record['all_fields_fill'].values[-1]):
+            st.session_state.resume=candidate_record['resume_path'].values[-1]
             if 'page' not in st.session_state:
                 st.session_state.page = 1
             if st.session_state.page == 1:
@@ -301,32 +302,32 @@ elif role == "Candidate" :
                 col1,col2=st.columns(2)
                 with col1:
                     company=st.selectbox('choose company',all_company)
-                with  col2:
-                    if company:
-                        try:
-                            recuiters_data_username=recuiters_data.loc[recuiters_data['company']==company]['username'].values[-1]
-                            company_job_data=fetch_job_data(recuiters_data_username)
-                            job_list=company_job_data['job'].tolist()
-                            job=st.selectbox('select job',job_list)
-                            st.session_state.token,st.session_state.job_posting=company_job_data.loc[company_job_data['job']==job][['token','description']].values[-1]
-                            see=fetch_applied_candidate_data(st.session_state.token)
-                            candidate_data=fetch_candidate_data()
-                            current_cabdidate_number=candidate_data.loc[candidate_data['id']==st.session_state.candidate_id]['phone_number'].values[-1]
-                            exist=see.loc[see['phone_number']==current_cabdidate_number].size
-                            if  exist:
-                                st.info('you already applied')
-                                button_enable=True
-                            else:
-                                button_enable=False
-
-                        except:
-                            st.info('no job available for this company')
+                if company:
+                    try:
+                        recuiters_data_username=recuiters_data.loc[recuiters_data['company']==company]['username'].values[-1]
+                        company_job_data=fetch_job_data(recuiters_data_username)
+                        job_list=company_job_data['job'].tolist()
+                        job=col2.selectbox('select job',job_list)
+                        st.session_state.token,st.session_state.job_posting=company_job_data.loc[company_job_data['job']==job][['token','description']].values[-1]
+                        
+                        see=fetch_applied_candidate_data(st.session_state.token)
+                        candidate_data=fetch_candidate_data()
+                        current_cabdidate_number=candidate_data.loc[candidate_data['id']==st.session_state.candidate_id]['phone_number'].values[-1]
+                        exist=see.loc[see['phone_number']==current_cabdidate_number].size
+                        if  exist:
+                            st.info('you already applied')
                             button_enable=True
-                             
-                    else:
-                        st.write(' ')
-                        st.info('No companies yet')
-                st.button("apply",on_click= lambda:st.session_state.update({'page':2,}),disabled=button_enable)
+                        else:
+                            button_enable=False
+                        show_job_posting(st.session_state.job_posting,job)
+                    except:
+                        st.info('no job available for this company')
+                        button_enable=True
+                         
+                else:
+                    st.write(' ')
+                    st.info('No companies yet')
+                st.button("Start interview",on_click= lambda:st.session_state.update({'page':2,}),disabled=button_enable)
                     
 
 
@@ -401,14 +402,13 @@ elif role == "Candidate" :
                 else:
                     # print(st.session_state.stm)
 
-                    if "score" not in st.session_state:
-                        try:
-                            st.session_state.score = get_score(st.session_state.resume, st.session_state.stm)
-                        except:
-                            st.session_state.score = random.randint(15, 40)
+                
+                    try:
+                        st.session_state.score = get_score(st.session_state.resume, st.session_state.stm)
+                    except:
+                        st.session_state.score = random.randint(15, 40)
 
-
-                    if 'saved' not in st.session_state and 'score' in st.session_state:
+                    if st.session_state.score:
                         cand_data=fetch_candidate_data()
                         candidate_details=cand_data.loc[cand_data['username']==st.session_state.candidate_username]
                         _,_,_,st.session_state.name, st.session_state.email, st.session_state.phone, st.session_state.picture,st.session_state.resume,_=candidate_details.values[-1]
@@ -417,13 +417,16 @@ elif role == "Candidate" :
                                 st.session_state.picture, st.session_state.stm, st.session_state.resume, 
                                 st.session_state.score)
                         add_applied_candidate_data(st.session_state.token,column, values)
-                        st.session_state.saved = 1
+                        st.session_state.score=0
                         st.success("thank you for participating!")
                         progress_bar = st.progress(0)
                         for percent_complete in range(100):
-                            time.sleep(0.5)  # Simulate some delay during token generation
+                            time.sleep(0.02)  # Simulate some delay during token generation
                             progress_bar.progress(percent_complete + 1)
                         st.session_state.page=1
+                        st.session_state.messages = []
+                        st.session_state.stm=''
+                        st.session_state.question_index = 0
                         st.rerun()
 
         else:

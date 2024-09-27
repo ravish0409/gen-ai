@@ -3,7 +3,9 @@ import streamlit as st
 from db_operations import *
 from PIL import Image
 import os
-
+from docx import Document
+from PyPDF2 import PdfReader
+import base64
 def handle_candidate_login(input_user, input_password):
     if input_user and input_password:
         data = fetch_candidate_data()
@@ -69,7 +71,33 @@ def save_details(name,email,phone,picture,resume):
     else:
         st.error('Please fill in all fields')
 
-# def next_page():
+def display_docx(file_path):
+    doc = Document(file_path)
+    for para in doc.paragraphs:
+        st.write(para.text)
+
+def display_pdf(file_path):
+    with open(file_path, "rb") as f:
+        base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+    pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="670" height="900" type="application/pdf"></iframe>'
+    st.markdown(pdf_display, unsafe_allow_html=True)
+
+def show_job_posting(file_path,job):
+    if file_path:
+        if os.path.exists(file_path):
+            file_extension = os.path.splitext(file_path)[1].lower()
+            
+            if file_extension == '.docx':
+                with st.expander(f"job description", expanded=True):
+                    display_docx(file_path)
+            elif file_extension == '.pdf':
+                with st.expander(f"Job description", expanded=True):
+                    display_pdf(file_path)
+            else:
+                st.error("Unsupported file format. Please provide a path to a DOCX or PDF file.")
+        else:
+            st.error("File not found. Please check the file path and try again.")
+    # def next_page():
 #     if st.session_state.page==1:
 #         if resume and text:
             
