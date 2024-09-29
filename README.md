@@ -4,15 +4,14 @@
 
 The Automated Recruitment Portal offers two main entry points, depending on the user's role: the **Recruiter Portal** and the **Candidate Portal**.
 
-- Recruiters can log in, post job openings, generate unique tokens for candidates, and view detailed candidate data.
-- Candidates can use these tokens to upload their resumes and provide personal information, which then leads them into an automated interview process.
+- Recruiters can create accounts, post job openings, manage candidates for specific roles, and use auto-generated scores by LLM to evaluate applicants.
+- Candidates can sign up, log in, complete their profile, and participate in an automated interview process for available job postings.
 
 ## Table of Contents
 - [System Flow](#system-flow)
   - [Recruiter Flow](#recruiter-flow)
   - [Candidate Flow](#candidate-flow)
-  - [Interview Process](#interview-process)
-- [Database and File Storage](#database-and-file-storage)
+- [Features](#features)
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Running the Application](#running-the-application)
@@ -20,42 +19,46 @@ The Automated Recruitment Portal offers two main entry points, depending on the 
 
 ## System Flow
 
-![Online FlowChart   Diagrams Editor - Mermaid Live Editor_page-0001](https://github.com/user-attachments/assets/3abba203-4225-4b71-b08e-99d6e5ad9410) 
+![flowchart_page-0001](https://github.com/user-attachments/assets/e68424d8-0e03-4aad-a3a0-eb886d306488)
+
 
 ### Recruiter Flow
 
-For recruiters, the process starts with logging into the system. If they're not logged in, the platform provides a login form. Upon successful login, recruiters are taken to the **Recruiter Dashboard**. From here, they can:
-
-1. **Upload Job Postings**: Recruiters can post job openings that are stored in the system.
-2. **Generate Tokens**: For each job posting, recruiters can generate a unique token for candidates.
-3. **View Candidate Data**: Recruiters can view information submitted by candidates, such as resumes, personal details, and performance scores from the interview process.
-
-All data from the system, including candidate information and job postings, is securely stored in a database for future access.
+1. **Sign Up/Login**: Recruiters can create an account or log in to an existing one.
+2. **Post a Job**: 
+   - Enter job title
+   - Upload job posting document (PDF or DOCX)
+   - System generates a unique token for the job
+3. **View Previous Job Postings**: 
+   - See a list of all posted jobs
+   - Option to delete job postings
+4. **View Candidate Profiles**:
+   - Select a specific job posting
+   - View list of applied candidates with their scores
+   - Access detailed information for each candidate
 
 ### Candidate Flow
 
-Once a candidate receives a token from the recruiter, they can enter it into the **Candidate Portal** and upload their resume. The system ensures all input is valid before proceeding to the next steps.
+1. **Sign Up/Login**: Candidates can create an account or log in to an existing one.
+2. **Complete Profile**:
+   - Enter personal information (name, email, phone)
+   - Upload resume (PDF or DOCX)
+   - Take or upload a picture
+3. **Apply for Jobs**:
+   - Select a company and available job posting
+   - Participate in an automated interview process
+4. **Interview Process**:
+   - Answer a series of questions generated based on the job posting and resume
+   - System calculates a score based on the answers
 
-- Candidates then enter their personal information and upload an image.
-- Once all fields are filled in, the candidate moves to the **Interview Process**.
+## Features
 
-### Interview Process
-
-During the **Interview Process**, the system retrieves a set of interview questions dynamically from an API, such as the **OpenAI API**.
-
-- The questions are displayed to the candidate, who answers them in real-time.
-- The system then evaluates the candidate's responses, calculates a score, and saves the results back to the database.
-- All of this happens seamlessly, without any manual intervention required from the recruiter.
-
-Once the interview is complete, the system ensures all candidate data, including their answers and scores, is stored securely in the database for recruiters to review.
-
-## Database and File Storage
-
-To handle data efficiently:
-
-- Job postings, candidate information, and recruiter information are stored in a central **Database**.
-- Resumes and images are stored in a **File Storage** system, ensuring easy access for recruiters when reviewing candidates.
-
+- User authentication for both recruiters and candidates
+- Job posting management for recruiters
+- Automated interview process for candidates
+- Integration with OpenAI API for generating interview questions and scoring responses
+- File upload functionality for resumes and profile pictures
+- Database storage for user information, job postings, and application data
 
 ## Installation
 
@@ -105,13 +108,15 @@ To run Gen-AI, follow these steps:
 The application has two main interfaces:
 
 ### Recruiter Interface
-- Login using your recruiter credentials
-- Upload job postings
-- Generate tokens for candidates
-- View and manage candidate data
+- Sign up or log in using your credentials
+- Post new job openings by providing job titles and uploading job descriptions
+- View and manage previous job postings
+- Access candidate profiles and their interview results for each job posting
 
 ### Candidate Interface
-- Enter the provided token and upload your resume
-- Fill in personal information and upload an image
-- Complete the AI-generated interview process
+- Sign up or log in using your credentials
+- Complete your profile by providing personal information, uploading a resume, and adding a profile picture
+- Browse available job postings from different companies
+- Participate in automated interviews for selected job postings
+- Receive immediate feedback and scoring after completing the interview process
 
